@@ -1,16 +1,31 @@
 <!DOCTYPE html>
-<html lang="hu">
+<html lang="hu" data-interface="online">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Online rendelés — hamarosan</title>
+  <title>Online rendelés</title>
   <link rel="stylesheet" href="/assets/base.css">
 </head>
-<body>
+<body class="is-centered">
+  <!-- Publikus felület: nincs bejelentkezés. -->
   <main class="screen">
     <p class="screen__eyebrow">And Order Here</p>
     <h1 class="screen__title">Online rendelés — hamarosan</h1>
-    <p class="screen__note">A felület váza elkészült, a funkciók a következő fejezetben kerülnek be.</p>
+    <p class="screen__note">
+      Ez a felület bejelentkezés nélkül, szabadon elérhető. Az étlap és a
+      rendelésfelvétel a következő szegmensekben készül el.
+    </p>
+    <p class="screen__note" data-api-status style="margin-top:16px"></p>
   </main>
+
+  <script>
+    // Publikus végpont: token nélkül is válaszol.
+    fetch('/api/online/status')
+      .then(function (response) { return response.json(); })
+      .then(function (data) {
+        document.querySelector('[data-api-status]').textContent = data.message;
+      })
+      .catch(function () {});
+  </script>
 </body>
 </html>

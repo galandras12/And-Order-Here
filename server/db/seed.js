@@ -1,6 +1,6 @@
 const db = require('./db');
 const repositories = require('./repositories');
-const { hashPassword } = require('../utils/password');
+const { hashPassword, hashPin } = require('../utils/password');
 const {
   ROLES,
   MENU_CATEGORY_NAMES,
@@ -152,34 +152,35 @@ async function seed(options = {}) {
     await extraRepository.createExtra({ restaurantId: restaurant.id, ...extra });
   }
 
+  // A jelszo es a PIN is hashelve kerul be (bcrypt), nyilt ertek sehol nem tarolodik.
   const users = [
     {
       name: 'Kovacs Anna (admin)',
       role: ROLES.ADMIN,
       email: 'admin@andorderhere.local',
       passwordHash: hashPassword('admin123'),
-      pinCode: null
+      pinCodeHash: null
     },
     {
       name: 'Nagy Peter (pincer)',
       role: ROLES.WAITER,
       email: null,
       passwordHash: null,
-      pinCode: '1234'
+      pinCodeHash: hashPin('1234')
     },
     {
       name: 'Szabo Gabor (szakacs)',
       role: ROLES.COOK,
       email: null,
       passwordHash: null,
-      pinCode: '2345'
+      pinCodeHash: hashPin('2345')
     },
     {
       name: 'Toth Eva (logisztika)',
       role: ROLES.LOGISTICS,
       email: 'logisztika@andorderhere.local',
       passwordHash: hashPassword('logi123'),
-      pinCode: '3456'
+      pinCodeHash: hashPin('3456')
     }
   ];
 

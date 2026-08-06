@@ -19,6 +19,11 @@ const config = {
   jwtSecret: process.env.JWT_SECRET || '',
   corsOrigin: process.env.CORS_ORIGIN || '*',
 
+  // Token elettartam felulet szerint: a pincer/szakacs tableten ritkabban lep be
+  // ujra, az admin/logisztika munkamenet rovidebb.
+  jwtExpiresStaff: process.env.JWT_EXPIRES_STAFF || '12h',
+  jwtExpiresAdmin: process.env.JWT_EXPIRES_ADMIN || '2h',
+
   // Fajlalapu (JSON) adattarolas - nincs szukseg kulon adatbazis-szerverre.
   dataFile: process.env.DATA_FILE || path.join(__dirname, 'db', 'data.json'),
   // Ures adatbazis eseten indulaskor lefut a seed (teszt etterem adatai).

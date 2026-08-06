@@ -1,16 +1,84 @@
 <!DOCTYPE html>
-<html lang="hu">
+<html lang="hu" data-interface="admin">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Admin felület — hamarosan</title>
+  <title>Admin felület</title>
   <link rel="stylesheet" href="/assets/base.css">
 </head>
 <body>
-  <main class="screen">
-    <p class="screen__eyebrow">And Order Here</p>
-    <h1 class="screen__title">Admin / vezetői felület — hamarosan</h1>
-    <p class="screen__note">A felület váza elkészült, a funkciók a következő fejezetben kerülnek be.</p>
-  </main>
+  <!-- Bejelentkezés: email + jelszó -->
+  <div class="auth-gate" data-auth-login hidden>
+    <div class="login">
+      <p class="login__eyebrow">And Order Here</p>
+      <h1 class="login__title">Admin belépés</h1>
+
+      <p class="alert" data-auth-error hidden></p>
+
+      <form data-auth-form novalidate>
+        <label class="field">
+          <span class="field__label">Email cím</span>
+          <input class="field__input" type="email" name="email" autocomplete="username" required>
+        </label>
+        <label class="field">
+          <span class="field__label">Jelszó</span>
+          <input class="field__input" type="password" name="password" autocomplete="current-password" required>
+        </label>
+        <button class="btn" type="submit">Belépés</button>
+      </form>
+
+      <p class="login__hint">Teszt fiók: admin@andorderhere.local / admin123</p>
+    </div>
+  </div>
+
+  <!-- Bejelentkezés után -->
+  <div data-auth-app hidden>
+    <header class="topbar">
+      <div class="topbar__brand">
+        <h1 class="topbar__title">Admin felület</h1>
+        <span class="topbar__badge">admin</span>
+      </div>
+      <div class="topbar__user">
+        <span data-auth-user></span>
+        <button type="button" class="btn btn--ghost" data-auth-logout>Kilépés</button>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <section class="card">
+        <h2 class="card__title">Felhasználók</h2>
+        <p class="card__note">
+          Az étterem felhasználói a seed adatokból. Szerkesztés a 4. szegmensben készül el.
+        </p>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Név</th>
+                <th>Szerepkör</th>
+                <th>Email</th>
+                <th>PIN belépés</th>
+                <th>Állapot</th>
+              </tr>
+            </thead>
+            <tbody data-users-body>
+              <tr><td colspan="5">Betöltés…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 class="card__title">Vezetői kimutatások — hamarosan</h2>
+        <p class="card__note">
+          A <code>/api/admin/*</code> végpontok csak admin szerepkörrel érhetők el.
+          A további funkciók a következő szegmensekben készülnek el.
+        </p>
+      </section>
+    </main>
+  </div>
+
+  <script src="/shared/auth.js"></script>
+  <script src="/admin/app.js"></script>
 </body>
 </html>

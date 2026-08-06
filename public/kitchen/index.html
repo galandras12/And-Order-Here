@@ -1,16 +1,76 @@
 <!DOCTYPE html>
-<html lang="hu">
+<html lang="hu" data-interface="kitchen">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Konyhai felület — hamarosan</title>
+  <title>Konyhai felület</title>
   <link rel="stylesheet" href="/assets/base.css">
 </head>
 <body>
-  <main class="screen">
-    <p class="screen__eyebrow">And Order Here</p>
-    <h1 class="screen__title">Szakács / konyhai felület — hamarosan</h1>
-    <p class="screen__note">A felület váza elkészült, a funkciók a következő fejezetben kerülnek be.</p>
-  </main>
+  <!-- Bejelentkezés: PIN-kódos gyorsbelépés -->
+  <div class="auth-gate" data-auth-login hidden>
+    <div class="login">
+      <p class="login__eyebrow">And Order Here</p>
+      <h1 class="login__title">Szakács belépés</h1>
+
+      <p class="alert" data-auth-error hidden></p>
+
+      <label class="field">
+        <span class="field__label">Étterem</span>
+        <select class="field__input" data-auth-restaurant></select>
+      </label>
+
+      <div class="pin-display" data-auth-pin-display></div>
+      <div class="keypad" data-auth-keypad></div>
+
+      <p class="login__hint">Írd be a 4–6 jegyű PIN-kódodat.<br>Teszt PIN: 2345</p>
+    </div>
+  </div>
+
+  <!-- Bejelentkezés után -->
+  <div data-auth-app hidden>
+    <header class="topbar">
+      <div class="topbar__brand">
+        <h1 class="topbar__title">Konyhai felület</h1>
+        <span class="topbar__badge">cook</span>
+      </div>
+      <div class="topbar__user">
+        <span data-auth-user></span>
+        <button type="button" class="btn btn--ghost" data-auth-logout>Kilépés</button>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <section class="card">
+        <h2 class="card__title">Konyhai rendelési sor — hamarosan</h2>
+        <p class="card__note">
+          A belépés és a jogosultságkezelés készen van: innentől a
+          <code>/api/kitchen/*</code> végpontok csak szakács szerepkörrel érhetők el.
+          A funkciók a következő szegmensben készülnek el.
+        </p>
+      </section>
+
+      <section class="card">
+        <h2 class="card__title">API kapcsolat</h2>
+        <p class="card__note" data-api-status>Ellenőrzés…</p>
+      </section>
+    </main>
+  </div>
+
+  <script src="/shared/auth.js"></script>
+  <script>
+    AndOrderAuth.init({
+      interface: 'kitchen',
+      mode: 'pin',
+      // Tableten hosszabb élettartamú munkamenet.
+      storage: 'local',
+      role: 'cook',
+      onLogin: function () {
+        AndOrderAuth.request('/api/kitchen/status').then(function (data) {
+          document.querySelector('[data-api-status]').textContent = data.message;
+        });
+      }
+    });
+  </script>
 </body>
 </html>

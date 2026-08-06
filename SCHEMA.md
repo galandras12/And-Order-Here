@@ -70,10 +70,18 @@ orders
 | `restaurantId` | string → `restaurants.id` | melyik étteremhez tartozik |
 | `name` | string | megjelenített név |
 | `role` | string | `waiter` \| `cook` \| `admin` \| `logistics` (\| `customer`) |
-| `pinCode` | string \| null | pincér/szakács belépéshez, étteremen belül egyedi |
-| `email` | string \| null | admin belépéshez |
-| `passwordHash` | string \| null | `scrypt$N$salt$hash` formátum |
+| `pinCodeHash` | string \| null | pincér/szakács belépéshez, bcrypt hash (4–6 jegyű PIN-ből) |
+| `email` | string \| null | admin/logisztika belépéshez |
+| `passwordHash` | string \| null | bcrypt hash |
 | `isActive` | boolean | inaktiválás törlés helyett, hogy a régi rendelések hivatkozása megmaradjon |
+
+Sem a jelszó, sem a PIN nem tárolódik nyílt szövegként, és egyik hash sem hagyja
+el a szervert: az API mindig szűrt felhasználó-nézetet ad vissza
+(`id`, `restaurantId`, `name`, `role`, `email`, `isActive`, `hasPin`).
+
+Mivel a PIN hashelve van, nem lehet rá közvetlenül keresni: a belépés az étterem
+PIN-nel rendelkező aktív felhasználóin megy végig hash-összehasonlítással
+(`userRepository.getPinCandidates`), a próbálkozásokat pedig korlátozás védi.
 
 ### tables
 
