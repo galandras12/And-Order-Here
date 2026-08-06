@@ -6,3 +6,7 @@ npm-debug.log*
 .DS_Store
 .idea/
 .vscode/
+
+# Fajlalapu adatbazis - a JSON adat nem megy verziokezelesbe
+/server/db/data.json
+/server/db/data/

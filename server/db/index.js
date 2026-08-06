@@ -1,23 +1,39 @@
 const { config } = require('../config');
+const db = require('./db');
+const repositories = require('./repositories');
+const { seedIfEmpty } = require('./seed');
 
 /**
- * Adatbazis reteg - egyelore csak helyorzo.
+ * Adatbazis reteg belepesi pont.
  *
- * A tenyleges kapcsolat (driver, pool, migraciok) egy kesobbi fejezetben keszul el;
- * addig is ezen a ponton fut ossze minden adatbazis-hozzaferes.
+ * Fajlalapu (JSON) tarolas lowdb-vel: nincs szukseg kulon adatbazis-szerverre,
+ * az `npm install` + `npm start` eleg. A JSON fajl elso indulaskor automatikusan
+ * letrejon, es ha ures, a teszt adatok is betoltodnek (SEED_ON_EMPTY).
+ *
+ * Hasznalat a felsobb retegekben:
+ *   const { orderRepository } = require('../db');
  */
 async function connect() {
-  if (!config.databaseUrl) {
-    console.warn('[db] Nincs DATABASE_URL, az adatbazis kapcsolat kihagyva.');
-    return null;
+  await db.init();
+
+  if (config.seedOnEmpty) {
+    const result = await seedIfEmpty();
+    if (!result.skipped) {
+      console.log('[db] Ures adatbazis - teszt adatok betoltve (SEED_ON_EMPTY=false kikapcsolja).');
+    }
   }
 
-  console.log('[db] DATABASE_URL beallitva, a kapcsolodas kesobbi fejezetben keszul el.');
-  return null;
+  console.log('[db] Kollekciok:', db.stats());
+  return db;
 }
 
 async function disconnect() {
-  // Meg nincs nyitott kapcsolat, amit zarni kellene.
+  await db.close();
 }
 
-module.exports = { connect, disconnect };
+module.exports = {
+  connect,
+  disconnect,
+  db,
+  ...repositories
+};
