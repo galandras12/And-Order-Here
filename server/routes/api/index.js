@@ -46,4 +46,24 @@ router.use((req, res) => {
   res.status(404).json({ error: 'not_found', message: 'Ismeretlen API vegpont.' });
 });
 
+/**
+ * A service reteg tipizalt hibai (ValidationError, NotFoundError, ConflictError)
+ * HTTP valaszra forditva. A validacios hibak mezonkenti listaval jonnek, hogy a
+ * felulet a megfelelo mezonel tudja megmutatni.
+ *
+ * Minden mas hiba a kozponti hibakezelohoz megy tovabb (500).
+ */
+router.use((err, req, res, next) => {
+  if (!err || !err.status || !err.code) {
+    next(err);
+    return;
+  }
+
+  res.status(err.status).json({
+    error: err.code,
+    message: err.message,
+    ...(err.fields && err.fields.length ? { fields: err.fields } : {})
+  });
+});
+
 module.exports = router;

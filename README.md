@@ -2,9 +2,9 @@
 
 Node.js + Express + Socket.io alapú étteremkezelő rendszer, fájlalapú (JSON)
 adattárolással, JWT-alapú bejelentkezéssel és valós idejű szinkronizációval.
-Eddig a projektváz, az adattárolási réteg, az autentikáció és a valós idejű
-kommunikációs réteg készült el — az üzleti funkciók (rendelésfelvétel, konyhai
-sor, készlet) a következő szegmensekben jönnek.
+Eddig a projektváz, az adattárolási réteg, az autentikáció, a valós idejű
+kommunikációs réteg és az admin menükezelés készült el — a további funkciók
+(rendelésfelvétel, konyhai sor, készlet) a következő szegmensekben jönnek.
 
 Az egész egyetlen `npm start` paranccsal, egyetlen Node folyamatként és egyetlen
 porton fut (HTTP API + WebSocket együtt): nincs külön adatbázis-szerver,
@@ -55,7 +55,17 @@ fut (`npm run dev` ugyanez, `node --watch` automatikus újraindítással).
 | `GET /api/auth/restaurants` | publikus — étteremválasztó a PIN-es képernyőhöz |
 | `GET /api/waiter/*` | csak `waiter` |
 | `GET /api/kitchen/*` | csak `cook` |
-| `GET /api/admin/*` | csak `admin` (pl. `GET /api/admin/users`) |
+| `GET /api/admin/restaurant` | csak `admin` — étterem alapadatok |
+| `PUT /api/admin/restaurant` | csak `admin` — alapadatok mentése |
+| `GET/POST /api/admin/menu-categories` | csak `admin` |
+| `PUT/DELETE /api/admin/menu-categories/:id` | csak `admin` (törlés csak üres kategóriára) |
+| `POST /api/admin/menu-categories/:id/move` | csak `admin` — sorrend fel/le |
+| `GET/POST /api/admin/menu-items` | csak `admin` (`?categoryId=` szűrés) |
+| `PUT/DELETE /api/admin/menu-items/:id` | csak `admin` |
+| `PATCH /api/admin/menu-items/:id/availability` | csak `admin` — socket eseményt is küld |
+| `GET/POST /api/admin/extras` | csak `admin` |
+| `PUT/DELETE /api/admin/extras/:id` | csak `admin` |
+| `GET /api/admin/users` | csak `admin` |
 | `GET /api/logistics/*` | csak `logistics` |
 | `GET /api/online/*` | publikus |
 
@@ -82,6 +92,31 @@ rossz szerepkörrel `403` a válasz.
 Rétegzés: az `authService` kizárólag a repository rétegen keresztül ér adatot,
 így SQL adatbázisra váltáskor csak a repository réteget kell lecserélni — a
 jelszó-ellenőrzés, a token-kezelés és a middleware változatlan marad.
+
+## Admin felület
+
+A `/admin` öt fülre bomlik:
+
+| Fül | Mit tud |
+| --- | --- |
+| Étterem beállításai | név, cím, telefon, ÁFA %, szervizdíj %, AP kód, nyugta lábléc — mezőnkénti hibajelzéssel |
+| Kategóriák | hozzáadás, átnevezés, sorrend fel/le, törlés (csak üres kategória) |
+| Menütételek | kategóriánként csoportosítva; név, ár, kategória, allergének (14 EU-s allergén checkboxként), elérhető/elfogyott kapcsoló; hozzáadás, szerkesztés, törlés |
+| Extrák | kiegészítők hozzáadása, szerkesztése, törlése |
+| Felhasználók | lista (szerkesztés későbbi szegmensben) + valós idejű eseménynapló |
+
+Az elérhetőség kapcsoló váltása `menu_item:availability_changed` socket eseményt
+küld a `server/sockets/emitters.js`-en keresztül, így a pincér és az online
+felület azonnal értesül róla. Ugyanez történik, ha a tétel szerkesztésekor
+változik az elérhetőség.
+
+Rétegzés: a route-ok vékonyak, minden üzleti szabály és validáció a
+`server/services/restaurantService.js` és `menuService.js` fájlokban van, amik
+kizárólag a repository interfészen keresztül érnek adatot.
+
+**ÁFA és szervizdíj százalékban tárolódik** (27 = 27%), 0 és 100 közötti érték
+lehet. Régebbi, arányként (0.27) tárolt adatot a séma-migráció induláskor
+automatikusan átszámol — lásd `server/db/defaultData.js`.
 
 ## Környezeti változók
 
@@ -142,7 +177,9 @@ server/
     api/          JSON API: auth + felületenkénti, szerepkörhöz kötött routerek
     index.js      route regisztráció, statikus mountok, hibakezelő
   services/
-    authService.js  bejelentkezés, token kiadás és ellenőrzés (csak repositoryt hív)
+    authService.js        bejelentkezés, token kiadás és ellenőrzés
+    restaurantService.js  étterem alapadatok + validáció
+    menuService.js        kategóriák, étlap tételek, extrák + üzleti szabályok
   middleware/
     requireAuth.js  JWT ellenőrzés az Authorization fejlécből
     requireRole.js  szerepkör szerinti szűrés
@@ -159,10 +196,16 @@ server/
   utils/
     password.js     bcrypt jelszó- és PIN-hash
     rateLimiter.js  memóriában tartott próbálkozás-korlátozás
+    validation.js   mezőnkénti validáció, tipizált hibák (400/404/409)
   config.js     .env alapú konfiguráció
   index.js      belépési pont
 public/
-  waiter/ admin/ logistics/ kitchen/ online/   felületenkénti statikus fájlok
+  waiter/ logistics/ kitchen/ online/   felületenkénti statikus fájlok
+  admin/
+    index.html  fülek: étterem, kategóriák, tételek, extrák, felhasználók
+    app.js      közös mag: fülek, API hívás, űrlap- és hibakezelés
+    restaurant.js  menu.js  extras.js  users.js   nézetenkénti modulok
+    admin.css   admin-specifikus stílus
   shared/
     auth.js         bejelentkezés, token tárolás, fetch wrapper
     socketClient.js Socket.io kapcsolat, újracsatlakozás, állapotjelző

@@ -19,7 +19,7 @@ const restaurantRepository = {
       name: input.name,
       address: input.address || '',
       phone: input.phone || '',
-      vatRate: input.vatRate ?? 0.27,
+      vatRate: input.vatRate ?? 27,
       serviceFeeRate: input.serviceFeeRate ?? 0,
       apCode: input.apCode || '',
       receiptFooterMessage: input.receiptFooterMessage || DEFAULT_RECEIPT_FOOTER

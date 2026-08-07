@@ -87,6 +87,30 @@
     OTHER: 'Egyeb'
   };
 
+  /**
+   * Az EU altal kotelezoen jelolendo 14 allergen. Az etlap tetelek allergens
+   * mezoje ezekbol a kulcsokbol all; a felulet a label-t jeleniti meg.
+   */
+  const ALLERGENS = [
+    { key: 'gluten', label: 'Glutén' },
+    { key: 'rakfelek', label: 'Rákfélék' },
+    { key: 'tojas', label: 'Tojás' },
+    { key: 'hal', label: 'Hal' },
+    { key: 'foldimogyoro', label: 'Földimogyoró' },
+    { key: 'szoja', label: 'Szója' },
+    { key: 'tej', label: 'Tej' },
+    { key: 'diofelek', label: 'Diófélék' },
+    { key: 'zeller', label: 'Zeller' },
+    { key: 'mustar', label: 'Mustár' },
+    { key: 'szezam', label: 'Szezámmag' },
+    { key: 'kendioxid', label: 'Kén-dioxid / szulfit' },
+    { key: 'csillagfurt', label: 'Csillagfürt' },
+    { key: 'puhatestuek', label: 'Puhatestűek' }
+  ];
+
+  /** Csak a kulcsok - validaciohoz. */
+  const ALLERGEN_KEYS = ALLERGENS.map((allergen) => allergen.key);
+
   /** Nyugta lablec alapertelmezett szovege. */
   const DEFAULT_RECEIPT_FOOTER = '– And-Order-Here –';
 
@@ -102,6 +126,8 @@
     ORDER_ITEM_STATUS,
     PAYMENT_METHOD,
     MENU_CATEGORY_NAMES,
+    ALLERGENS,
+    ALLERGEN_KEYS,
     DEFAULT_RECEIPT_FOOTER
   };
 });

@@ -1,0 +1,349 @@
+/*
+ * Admin felulet - kozos vizualis alap.
+ *
+ * Fekete alap, domino kek kiemeles (--accent a base.css-ben, data-interface="admin"),
+ * jol olvashato tablazatok es urlapok, reszponziv elrendezes: elsosorban asztali
+ * gepre, de mobilon is hasznalhato.
+ */
+
+/* ---------- Fulek ---------- */
+
+.admin-nav {
+  display: flex;
+  gap: 4px;
+  padding: 0 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.admin-nav__tab {
+  padding: 13px 18px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.admin-nav__tab:hover {
+  color: var(--text);
+}
+
+.admin-nav__tab.is-active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.admin-panel[hidden] {
+  display: none;
+}
+
+/* ---------- Urlapok ---------- */
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.form-grid--full {
+  grid-template-columns: 1fr;
+}
+
+.field--error .field__input {
+  border-color: var(--danger);
+}
+
+.field__error {
+  display: block;
+  margin-top: 5px;
+  color: var(--danger);
+  font-size: 12px;
+  min-height: 0;
+}
+
+.field__hint {
+  display: block;
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.field__input--sm {
+  padding: 8px 10px;
+  font-size: 14px;
+}
+
+select.field__input {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+  background-position: calc(100% - 18px) 55%, calc(100% - 13px) 55%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 34px;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.btn--inline {
+  width: auto;
+  padding: 10px 20px;
+}
+
+.btn--sm {
+  width: auto;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.btn--danger {
+  background: transparent;
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.btn--danger:hover:not(:disabled) {
+  background: rgba(255, 107, 107, 0.12);
+  filter: none;
+}
+
+.btn--icon {
+  width: 32px;
+  padding: 6px 0;
+  text-align: center;
+  font-size: 13px;
+}
+
+/* ---------- Allergen valaszto ---------- */
+
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 8px 14px;
+  margin-top: 6px;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.checkbox input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* ---------- Kapcsolo (elerheto / elfogyott) ---------- */
+
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch__track {
+  position: relative;
+  width: 38px;
+  height: 21px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  transition: background 0.15s ease, border-color 0.15s ease;
+  flex: none;
+}
+
+.switch__track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.switch input:checked + .switch__track {
+  background: rgba(53, 196, 106, 0.18);
+  border-color: #35c46a;
+}
+
+.switch input:checked + .switch__track::after {
+  transform: translateX(17px);
+  background: #35c46a;
+}
+
+.switch input:focus-visible + .switch__track {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.switch__label {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ---------- Listak, tablazatok ---------- */
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.data-table td .row-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.data-table .col-actions {
+  text-align: right;
+  width: 1%;
+}
+
+.data-table .col-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.data-table tr.is-unavailable td:not(.col-actions) {
+  opacity: 0.55;
+}
+
+.data-table td.col-wrap {
+  white-space: normal;
+}
+
+.category-group {
+  margin-bottom: 26px;
+}
+
+.category-group__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--accent);
+  margin-bottom: 4px;
+}
+
+.category-group__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.category-group__count {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.allergen-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.allergen-tag {
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.empty-note {
+  padding: 14px 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* ---------- Visszajelzes ---------- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 200;
+  max-width: min(520px, calc(100vw - 32px));
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+}
+
+.toast--error {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.toast[hidden] {
+  display: none;
+}
+
+/* ---------- Mobil ---------- */
+
+@media (max-width: 720px) {
+  .topbar,
+  .admin-nav {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .app-main {
+    padding: 16px;
+  }
+
+  .card {
+    padding: 18px 16px;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .conn-status {
+    left: 16px;
+    right: auto;
+    bottom: 12px;
+  }
+}

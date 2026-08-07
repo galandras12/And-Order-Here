@@ -7,7 +7,7 @@ mezőt.
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "restaurants": [],
   "users": [],
   "tables": [],
@@ -57,8 +57,8 @@ orders
 | `name` | string | étterem neve |
 | `address` | string | cím |
 | `phone` | string | telefonszám |
-| `vatRate` | number | áfakulcs arányban (0.27 = 27%) |
-| `serviceFeeRate` | number | szervizdíj arányban (0.1 = 10%) |
+| `vatRate` | number | áfakulcs százalékban (27 = 27%), 0–100 |
+| `serviceFeeRate` | number | szervizdíj százalékban (10 = 10%), 0–100 |
 | `apCode` | string | pénztárgép AP kód |
 | `receiptFooterMessage` | string | nyugta lábléc, alapérték: `– And-Order-Here –` |
 
@@ -122,7 +122,7 @@ PIN-nel rendelkező aktív felhasználóin megy végig hash-összehasonlítássa
 | `name` | string | tétel neve |
 | `price` | number | egységár (Ft) |
 | `isAvailable` | boolean | elérhető-e most |
-| `allergens` | string[] | pl. `["glutén", "tej"]` |
+| `allergens` | string[] | allergén kulcsok a `shared/constants.js` `ALLERGENS` listájából, pl. `["gluten", "tej"]` |
 
 ### extras
 
@@ -231,3 +231,16 @@ importnál), ütközés esetén hibát dob.
 A hiányzó kollekciók induláskor automatikusan létrejönnek a meglévő fájlban is
 (`server/db/defaultData.js` → `normalizeData`), tehát meglévő adat mellett sem
 kell újraseedelni.
+
+## Séma verziók
+
+A fájl `schemaVersion` mezője jelzi, melyik séma szerint készült. Induláskor a
+`normalizeData` lefuttatja a hiányzó migrációkat, és menti a fájlt.
+
+| Verzió | Változás |
+| --- | --- |
+| 1 | kiinduló séma |
+| 2 | `vatRate` / `serviceFeeRate` arányról (0.27) százalékra (27); `menuItems.allergens` magyar címkéről kulcsra (`glutén` → `gluten`) |
+
+Új migrációhoz: emeld a `SCHEMA_VERSION` értékét, és vedd fel a hozzá tartozó
+függvényt a `MIGRATIONS` objektumba.

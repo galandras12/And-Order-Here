@@ -11,13 +11,18 @@ const menuCategoryRepository = {
    * @param {{ restaurantId: string, name: string, sortOrder?: number }} input
    */
   async createCategory(input) {
-    const sortOrder =
-      input.sortOrder ?? menuCategoryRepository.getByRestaurant(input.restaurantId).length;
+    // A lista vegere: a legnagyobb meglevo sortOrder + 1. (A darabszam nem jo:
+    // torles vagy atrendezes utan utkozhet egy meglevo ertekkel.)
+    const existing = menuCategoryRepository.getByRestaurant(input.restaurantId);
+    const nextSortOrder = existing.reduce(
+      (max, category) => Math.max(max, Number(category.sortOrder) || 0),
+      -1
+    ) + 1;
 
     return base.insert({
       restaurantId: input.restaurantId,
       name: input.name,
-      sortOrder
+      sortOrder: input.sortOrder ?? nextSortOrder
     });
   },
 

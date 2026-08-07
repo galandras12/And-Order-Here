@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Admin felület</title>
   <link rel="stylesheet" href="/assets/base.css">
+  <link rel="stylesheet" href="/admin/admin.css">
 </head>
 <body>
   <!-- Bejelentkezés: email + jelszó -->
@@ -44,56 +45,274 @@
       </div>
     </header>
 
+    <nav class="admin-nav" data-admin-nav>
+      <button type="button" class="admin-nav__tab is-active" data-tab="restaurant">Étterem beállításai</button>
+      <button type="button" class="admin-nav__tab" data-tab="categories">Kategóriák</button>
+      <button type="button" class="admin-nav__tab" data-tab="items">Menütételek</button>
+      <button type="button" class="admin-nav__tab" data-tab="extras">Extrák</button>
+      <button type="button" class="admin-nav__tab" data-tab="users">Felhasználók</button>
+    </nav>
+
     <main class="app-main">
-      <section class="card">
-        <h2 class="card__title">Felhasználók</h2>
-        <p class="card__note">
-          Az étterem felhasználói a seed adatokból. Szerkesztés a 4. szegmensben készül el.
-        </p>
-        <div class="table-wrap">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Név</th>
-                <th>Szerepkör</th>
-                <th>Email</th>
-                <th>PIN belépés</th>
-                <th>Állapot</th>
-              </tr>
-            </thead>
-            <tbody data-users-body>
-              <tr><td colspan="5">Betöltés…</td></tr>
-            </tbody>
-          </table>
+
+      <!-- A) Étterem alapadatok -->
+      <section class="admin-panel" data-panel="restaurant">
+        <div class="card">
+          <h2 class="card__title">Étterem beállításai</h2>
+          <p class="card__note">Az itt megadott adatok jelennek meg a nyugtán és a számításokban.</p>
+
+          <form data-restaurant-form novalidate style="margin-top:20px">
+            <div class="form-grid">
+              <label class="field" data-field="name">
+                <span class="field__label">Étterem neve *</span>
+                <input class="field__input" name="name" required>
+                <span class="field__error"></span>
+              </label>
+              <label class="field" data-field="phone">
+                <span class="field__label">Telefonszám</span>
+                <input class="field__input" name="phone">
+                <span class="field__error"></span>
+              </label>
+            </div>
+
+            <div class="form-grid form-grid--full">
+              <label class="field" data-field="address">
+                <span class="field__label">Cím</span>
+                <input class="field__input" name="address">
+                <span class="field__error"></span>
+              </label>
+            </div>
+
+            <div class="form-grid">
+              <label class="field" data-field="vatRate">
+                <span class="field__label">ÁFA (%) *</span>
+                <input class="field__input" name="vatRate" type="number" min="0" max="100" step="0.1" required>
+                <span class="field__hint">0 és 100 közötti szám.</span>
+                <span class="field__error"></span>
+              </label>
+              <label class="field" data-field="serviceFeeRate">
+                <span class="field__label">Szervizdíj (%) *</span>
+                <input class="field__input" name="serviceFeeRate" type="number" min="0" max="100" step="0.1" required>
+                <span class="field__hint">0 és 100 közötti szám.</span>
+                <span class="field__error"></span>
+              </label>
+              <label class="field" data-field="apCode">
+                <span class="field__label">AP kód</span>
+                <input class="field__input" name="apCode">
+                <span class="field__error"></span>
+              </label>
+            </div>
+
+            <div class="form-grid form-grid--full">
+              <label class="field" data-field="receiptFooterMessage">
+                <span class="field__label">Nyugta lábléc</span>
+                <input class="field__input" name="receiptFooterMessage">
+                <span class="field__error"></span>
+              </label>
+            </div>
+
+            <div class="form-actions">
+              <button class="btn btn--inline" type="submit">Mentés</button>
+              <button class="btn btn--ghost btn--inline" type="button" data-restaurant-reset>Visszaállítás</button>
+            </div>
+          </form>
         </div>
       </section>
 
-      <section class="card">
-        <h2 class="card__title">Valós idejű események</h2>
-        <p class="card__note">
-          A beérkező események a böngésző konzoljában is naplózódnak.
-          Szobák: <code data-socket-rooms>—</code>
-        </p>
-        <ul class="event-log" data-event-log>
-          <li class="event-log__empty">Még nem érkezett esemény.</li>
-        </ul>
+      <!-- B) Menükategóriák -->
+      <section class="admin-panel" data-panel="categories" hidden>
+        <div class="card">
+          <h2 class="card__title">Új kategória</h2>
+          <form data-category-form novalidate style="margin-top:16px">
+            <div class="form-grid">
+              <label class="field" data-field="name">
+                <span class="field__label">Kategória neve *</span>
+                <input class="field__input" name="name" required>
+                <span class="field__error"></span>
+              </label>
+              <div class="field" style="align-self:end">
+                <button class="btn btn--inline" type="submit">Hozzáadás</button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <h2 class="card__title">Kategóriák</h2>
+          <p class="card__note">A sorrend a pincér és az online étlapon is ebben a sorrendben jelenik meg.</p>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Sorrend</th>
+                  <th>Név</th>
+                  <th class="col-num">Tételek</th>
+                  <th class="col-actions">Műveletek</th>
+                </tr>
+              </thead>
+              <tbody data-categories-body>
+                <tr><td colspan="4">Betöltés…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </section>
 
-      <section class="card">
-        <h2 class="card__title">Vezetői kimutatások — hamarosan</h2>
-        <p class="card__note">
-          A <code>/api/admin/*</code> végpontok csak admin szerepkörrel érhetők el.
-          A további funkciók a következő szegmensekben készülnek el.
-        </p>
+      <!-- C) Menütételek -->
+      <section class="admin-panel" data-panel="items" hidden>
+        <div class="card">
+          <h2 class="card__title" data-item-form-title>Új menütétel</h2>
+          <form data-item-form novalidate style="margin-top:16px">
+            <input type="hidden" name="id">
+            <div class="form-grid">
+              <label class="field" data-field="name">
+                <span class="field__label">Név *</span>
+                <input class="field__input" name="name" required>
+                <span class="field__error"></span>
+              </label>
+              <label class="field" data-field="price">
+                <span class="field__label">Ár (Ft) *</span>
+                <input class="field__input" name="price" type="number" min="0" step="10" required>
+                <span class="field__error"></span>
+              </label>
+              <label class="field" data-field="categoryId">
+                <span class="field__label">Kategória *</span>
+                <select class="field__input" name="categoryId" required></select>
+                <span class="field__error"></span>
+              </label>
+            </div>
+
+            <div class="field" data-field="allergens">
+              <span class="field__label">Allergének</span>
+              <div class="checkbox-grid" data-allergen-list></div>
+              <span class="field__error"></span>
+            </div>
+
+            <div class="field" style="margin-top:16px">
+              <label class="switch">
+                <input type="checkbox" name="isAvailable" checked>
+                <span class="switch__track"></span>
+                <span class="switch__label">Elérhető</span>
+              </label>
+            </div>
+
+            <div class="form-actions">
+              <button class="btn btn--inline" type="submit" data-item-submit>Hozzáadás</button>
+              <button class="btn btn--ghost btn--inline" type="button" data-item-cancel hidden>Mégse</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="section-head">
+            <h2 class="card__title">Étlap</h2>
+            <label class="switch">
+              <input type="checkbox" data-items-filter-available>
+              <span class="switch__track"></span>
+              <span class="switch__label">Csak az elérhetők</span>
+            </label>
+          </div>
+          <div data-items-list>
+            <p class="empty-note">Betöltés…</p>
+          </div>
+        </div>
       </section>
+
+      <!-- D) Extrák -->
+      <section class="admin-panel" data-panel="extras" hidden>
+        <div class="card">
+          <h2 class="card__title" data-extra-form-title>Új kiegészítő</h2>
+          <form data-extra-form novalidate style="margin-top:16px">
+            <input type="hidden" name="id">
+            <div class="form-grid">
+              <label class="field" data-field="name">
+                <span class="field__label">Név *</span>
+                <input class="field__input" name="name" required>
+                <span class="field__error"></span>
+              </label>
+              <label class="field" data-field="price">
+                <span class="field__label">Felár (Ft) *</span>
+                <input class="field__input" name="price" type="number" min="0" step="10" required>
+                <span class="field__error"></span>
+              </label>
+              <div class="field form-actions" style="align-self:end">
+                <button class="btn btn--inline" type="submit" data-extra-submit>Hozzáadás</button>
+                <button class="btn btn--ghost btn--inline" type="button" data-extra-cancel hidden>Mégse</button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <h2 class="card__title">Kiegészítők</h2>
+          <p class="card__note">A rendelési tételekhez ezek közül lehet majd választani.</p>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Név</th>
+                  <th class="col-num">Felár</th>
+                  <th class="col-actions">Műveletek</th>
+                </tr>
+              </thead>
+              <tbody data-extras-body>
+                <tr><td colspan="3">Betöltés…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Felhasználók + valós idejű napló -->
+      <section class="admin-panel" data-panel="users" hidden>
+        <div class="card">
+          <h2 class="card__title">Felhasználók</h2>
+          <p class="card__note">Az étterem felhasználói. Szerkesztés egy későbbi szegmensben készül el.</p>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Név</th>
+                  <th>Szerepkör</th>
+                  <th>Email</th>
+                  <th>PIN belépés</th>
+                  <th>Állapot</th>
+                </tr>
+              </thead>
+              <tbody data-users-body>
+                <tr><td colspan="5">Betöltés…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 class="card__title">Valós idejű események</h2>
+          <p class="card__note">
+            A beérkező események a böngésző konzoljában is naplózódnak.
+            Szobák: <code data-socket-rooms>—</code>
+          </p>
+          <ul class="event-log" data-event-log>
+            <li class="event-log__empty">Még nem érkezett esemény.</li>
+          </ul>
+        </div>
+      </section>
+
     </main>
   </div>
+
+  <p class="toast" data-toast hidden></p>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="/shared/socketEvents.js"></script>
   <script src="/shared/socketClient.js"></script>
   <script src="/shared/auth.js"></script>
   <script src="/shared/eventLog.js"></script>
+  <!-- app.js definialja a kozos AdminApp magot, a tobbi modul erre epul -->
   <script src="/admin/app.js"></script>
+  <script src="/admin/restaurant.js"></script>
+  <script src="/admin/menu.js"></script>
+  <script src="/admin/extras.js"></script>
+  <script src="/admin/users.js"></script>
 </body>
 </html>

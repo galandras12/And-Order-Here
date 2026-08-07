@@ -60,24 +60,24 @@ const ZONES = [
 
 const MENU = {
   [MENU_CATEGORY_NAMES.FOOD]: [
-    { name: 'Ujhazi tyukhusleves', price: 1890, allergens: ['glutén', 'zeller', 'tojás'] },
+    { name: 'Ujhazi tyukhusleves', price: 1890, allergens: ['gluten', 'zeller', 'tojas'] },
     { name: 'Gulyasleves', price: 2190, allergens: ['zeller'] },
-    { name: 'Rantott sajt koretttel', price: 3290, allergens: ['glutén', 'tej', 'tojás'] },
-    { name: 'Marhaporkolt galuskaval', price: 4590, allergens: ['glutén', 'tojás'] },
+    { name: 'Rantott sajt koretttel', price: 3290, allergens: ['gluten', 'tej', 'tojas'] },
+    { name: 'Marhaporkolt galuskaval', price: 4590, allergens: ['gluten', 'tojas'] },
     { name: 'Grillezett csirkemell', price: 3890, allergens: [] },
-    { name: 'Cezar salata', price: 3190, allergens: ['glutén', 'tej', 'hal', 'tojás'] },
-    { name: 'Vegetarianus lasagne', price: 3490, allergens: ['glutén', 'tej'] },
-    { name: 'Somloi galuska', price: 1990, allergens: ['glutén', 'tej', 'tojás', 'diófélék'] }
+    { name: 'Cezar salata', price: 3190, allergens: ['gluten', 'tej', 'hal', 'tojas'] },
+    { name: 'Vegetarianus lasagne', price: 3490, allergens: ['gluten', 'tej'] },
+    { name: 'Somloi galuska', price: 1990, allergens: ['gluten', 'tej', 'tojas', 'diofelek'] }
   ],
   [MENU_CATEGORY_NAMES.DRINK]: [
     { name: 'Asvanyviz 0,33 l', price: 590, allergens: [] },
     { name: 'Kola 0,5 l', price: 890, allergens: [] },
-    { name: 'Csapolt sor 0,5 l', price: 1290, allergens: ['glutén'] },
+    { name: 'Csapolt sor 0,5 l', price: 1290, allergens: ['gluten'] },
     { name: 'Hazi limonade', price: 1190, allergens: [] },
     { name: 'Espresso', price: 790, allergens: [] }
   ],
   [MENU_CATEGORY_NAMES.OTHER]: [
-    { name: 'Kenyerkosar', price: 490, allergens: ['glutén'] },
+    { name: 'Kenyerkosar', price: 490, allergens: ['gluten'] },
     { name: 'Elviteli csomagolas', price: 250, allergens: [] }
   ]
 };
@@ -113,8 +113,8 @@ async function seed(options = {}) {
     name: 'And Order Here Bisztro',
     address: '1052 Budapest, Petofi Sandor utca 12.',
     phone: '+36 1 234 5678',
-    vatRate: 0.27,
-    serviceFeeRate: 0.1,
+    vatRate: 27,
+    serviceFeeRate: 10,
     apCode: 'AP-A123XY45',
     receiptFooterMessage: DEFAULT_RECEIPT_FOOTER
   });
