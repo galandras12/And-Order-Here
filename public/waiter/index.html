@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Pincér felület</title>
   <link rel="stylesheet" href="/assets/base.css">
+  <link rel="stylesheet" href="/waiter/waiter.css">
 </head>
 <body>
   <!-- Bejelentkezés: PIN-kódos gyorsbelépés -->
@@ -31,7 +32,7 @@
   <div data-auth-app hidden>
     <header class="topbar">
       <div class="topbar__brand">
-        <h1 class="topbar__title">Pincér felület</h1>
+        <h1 class="topbar__title">Asztaltérkép</h1>
         <span class="topbar__badge">waiter</span>
       </div>
       <div class="topbar__user">
@@ -42,52 +43,100 @@
 
     <main class="app-main">
       <section class="card">
-        <h2 class="card__title">Asztaltérkép és rendelésfelvétel — hamarosan</h2>
-        <p class="card__note">
-          A belépés és a jogosultságkezelés készen van: innentől a
-          <code>/api/waiter/*</code> végpontok csak pincér szerepkörrel érhetők el.
-          A funkciók a következő szegmensben készülnek el.
-        </p>
-      </section>
+        <div class="floor-toolbar">
+          <button type="button" class="btn btn--ghost btn--sm" data-map-refresh>Frissítés</button>
+          <span class="floor-toolbar__spacer"></span>
+          <div class="zoom-group">
+            <button type="button" class="btn btn--ghost btn--icon-sq" data-map-zoom-out aria-label="Kicsinyítés">−</button>
+            <span class="zoom-group__value" data-map-zoom-value>100%</span>
+            <button type="button" class="btn btn--ghost btn--icon-sq" data-map-zoom-in aria-label="Nagyítás">+</button>
+            <button type="button" class="btn btn--ghost btn--sm" data-map-zoom-fit>Illesztés</button>
+          </div>
+        </div>
 
-      <section class="card">
-        <h2 class="card__title">API kapcsolat</h2>
-        <p class="card__note" data-api-status>Ellenőrzés…</p>
-      </section>
+        <div class="map-frame" data-map-frame>
+          <canvas class="map-canvas" data-map-canvas></canvas>
+          <p class="map-empty" data-map-empty hidden>
+            Még nincs asztal az étteremhez. Az elrendezést az admin felület
+            Asztaltérkép fülén lehet kialakítani.
+          </p>
 
-      <section class="card">
-        <h2 class="card__title">Valós idejű események</h2>
-        <p class="card__note">
-          A beérkező események a böngésző konzoljában is naplózódnak.
-          Szobák: <code data-socket-rooms>—</code>
-        </p>
-        <ul class="event-log" data-event-log>
-          <li class="event-log__empty">Még nem érkezett esemény.</li>
-        </ul>
+          <!-- Asztalra / autó ikonra kattintva megnyíló menü -->
+          <div class="map-menu" data-map-menu hidden>
+            <p class="map-menu__title" data-menu-title></p>
+            <p class="map-menu__meta" data-menu-meta></p>
+            <div class="map-menu__actions">
+              <button type="button" class="btn btn--sm" data-menu-order>Rendelés felvétele</button>
+              <button type="button" class="btn btn--ghost btn--sm" data-menu-reserve>Asztal lefoglalása</button>
+              <button type="button" class="btn btn--ghost btn--sm" data-menu-close>Bezárás</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="legend">
+          <span class="legend__item"><span class="legend__swatch legend__swatch--free"></span> szabad</span>
+          <span class="legend__item"><span class="legend__swatch legend__swatch--ordering"></span> rendelés alatt</span>
+          <span class="legend__item"><span class="legend__swatch legend__swatch--bill"></span> számlát kért</span>
+          <span class="legend__item">🕐 lefoglalva</span>
+          <span class="legend__item"><span class="legend__swatch legend__swatch--zone"></span> zóna · 🚗 online rendelés</span>
+          <span class="legend__item" data-map-summary></span>
+        </div>
       </section>
     </main>
   </div>
+
+  <!-- Foglalás -->
+  <div class="dialog" data-reserve-dialog hidden>
+    <div class="dialog__box">
+      <h2 class="dialog__title">Asztal lefoglalása</h2>
+      <p class="dialog__note" data-reserve-table></p>
+
+      <form data-reserve-form novalidate>
+        <label class="field" data-field="reservedFrom">
+          <span class="field__label">Kezdés *</span>
+          <input class="field__input" type="datetime-local" name="reservedFrom" required>
+          <span class="field__error"></span>
+        </label>
+
+        <div class="field-row">
+          <label class="field" data-field="duration">
+            <span class="field__label">Időtartam</span>
+            <select class="field__input" name="duration">
+              <option value="60">1 óra</option>
+              <option value="90" selected>1,5 óra</option>
+              <option value="120">2 óra</option>
+              <option value="180">3 óra</option>
+            </select>
+            <span class="field__error"></span>
+          </label>
+          <label class="field" data-field="reservedTo">
+            <span class="field__label">Vége</span>
+            <input class="field__input" type="datetime-local" name="reservedTo">
+            <span class="field__error"></span>
+          </label>
+        </div>
+
+        <label class="field" data-field="comment">
+          <span class="field__label">Megjegyzés</span>
+          <input class="field__input" name="comment" placeholder="pl. 4 fő, Kovács">
+          <span class="field__error"></span>
+        </label>
+
+        <div class="dialog__actions">
+          <button class="btn" type="submit">Foglalás</button>
+          <button class="btn btn--ghost" type="button" data-reserve-cancel>Mégse</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <p class="toast" data-toast hidden></p>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="/shared/socketEvents.js"></script>
   <script src="/shared/socketClient.js"></script>
   <script src="/shared/auth.js"></script>
-  <script src="/shared/eventLog.js"></script>
-  <script>
-    AndOrderAuth.init({
-      interface: 'waiter',
-      mode: 'pin',
-      // Tableten hosszabb élettartamú munkamenet.
-      storage: 'local',
-      role: 'waiter',
-      onLogin: function () {
-        AndOrderAuth.request('/api/waiter/status').then(function (data) {
-          document.querySelector('[data-api-status]').textContent = data.message;
-        });
-        // Valós idejű csatorna a bejelentkezéskor kapott tokennel.
-        AndOrderEventLog.start({ token: AndOrderAuth.getToken() });
-      }
-    });
-  </script>
+  <script src="/waiter/floorMap.js"></script>
+  <script src="/waiter/app.js"></script>
 </body>
 </html>

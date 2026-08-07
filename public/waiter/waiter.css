@@ -1,0 +1,292 @@
+/*
+ * Pinceri asztalterkep - zold-fekete design nyelv.
+ *
+ * Az allapotszinek jol elkulonulnek egymastol, de a felulet zold temajaba
+ * illeszkednek: szabad = semleges szurke, rendeles alatt = zold, szamlat kert =
+ * borostyan. A zonak (online rendelesek terulete) hideg turkiz, hogy elsore
+ * latszodjon: az nem asztal.
+ */
+
+.floor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.floor-toolbar__spacer {
+  flex: 1 1 auto;
+}
+
+.zoom-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.zoom-group__value {
+  min-width: 52px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.btn--inline {
+  width: auto;
+  padding: 10px 18px;
+}
+
+.btn--sm {
+  width: auto;
+  padding: 7px 12px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.btn--icon-sq {
+  width: 38px;
+  padding: 7px 0;
+  text-align: center;
+  font-size: 16px;
+}
+
+/* ---------- Vaszon ---------- */
+
+.map-frame {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #050506;
+  overflow: hidden;
+  /* A nagyitast/pasztazast sajat kezeljuk, a bongeszo ne gorgessen bele. */
+  touch-action: none;
+}
+
+.map-canvas {
+  display: block;
+  width: 100%;
+  height: 60vh;
+  min-height: 320px;
+  cursor: pointer;
+}
+
+.map-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.map-empty[hidden] {
+  display: none;
+}
+
+/* ---------- Jelmagyarazat ---------- */
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.legend__item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.legend__swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 2px solid;
+}
+
+.legend__swatch--free {
+  border-color: #8b8b93;
+  background: rgba(139, 139, 147, 0.2);
+}
+
+.legend__swatch--ordering {
+  border-color: #35c46a;
+  background: rgba(53, 196, 106, 0.25);
+}
+
+.legend__swatch--bill {
+  border-color: #f2b544;
+  background: rgba(242, 181, 68, 0.25);
+}
+
+.legend__swatch--zone {
+  border-color: rgba(90, 200, 220, 0.8);
+  background: rgba(90, 200, 220, 0.16);
+  border-style: dashed;
+}
+
+/* ---------- Asztal menu (kattintasra) ---------- */
+
+.map-menu {
+  position: absolute;
+  z-index: 20;
+  min-width: 210px;
+  padding: 12px;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+}
+
+.map-menu[hidden] {
+  display: none;
+}
+
+.map-menu__title {
+  margin: 0 0 2px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.map-menu__meta {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.map-menu__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.map-menu__actions .btn {
+  width: 100%;
+}
+
+/* ---------- Foglalas urlap ---------- */
+
+.dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.66);
+}
+
+.dialog[hidden] {
+  display: none;
+}
+
+.dialog__box {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 24px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.dialog__title {
+  margin: 0 0 4px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.dialog__note {
+  margin: 0 0 18px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.field__error {
+  display: block;
+  margin-top: 5px;
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.field--error .field__input {
+  border-color: var(--danger);
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.dialog__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.dialog__actions .btn {
+  width: auto;
+  flex: 1;
+}
+
+/* ---------- Visszajelzes ---------- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 70px;
+  transform: translateX(-50%);
+  z-index: 80;
+  max-width: min(520px, calc(100vw - 32px));
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  /* Csak visszajelzes: ne nyelje el a vaszon erinteseit. */
+  pointer-events: none;
+}
+
+.toast--error {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.toast[hidden] {
+  display: none;
+}
+
+/* ---------- Mobil ---------- */
+
+@media (max-width: 720px) {
+  .app-main {
+    padding: 14px;
+  }
+
+  .card {
+    padding: 16px 14px;
+  }
+
+  .map-canvas {
+    height: 55vh;
+  }
+
+  .floor-toolbar {
+    gap: 8px;
+  }
+}

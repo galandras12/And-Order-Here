@@ -59,8 +59,20 @@
     IN_PREPARATION: 'in_preparation',
     READY: 'ready',
     SERVED: 'served',
+    // A vendeg kerte a szamlat - a fizetes meg nem tortent meg.
+    BILL_REQUESTED: 'bill_requested',
     PAID: 'paid',
     CANCELLED: 'cancelled'
+  };
+
+  /**
+   * Asztal allapota a pinceri asztalterkepen. A szerver szamolja a nyitott
+   * rendelesekbol, a kliens csak megjeleniti.
+   */
+  const TABLE_STATE = {
+    FREE: 'free',
+    ORDERING: 'ordering',
+    BILL_REQUESTED: 'bill_requested'
   };
 
   /** Egy rendelesi tetel allapota a konyhai folyamatban. */
@@ -124,6 +136,7 @@
     ORDER_TYPE,
     ORDER_STATUS,
     ORDER_ITEM_STATUS,
+    TABLE_STATE,
     PAYMENT_METHOD,
     MENU_CATEGORY_NAMES,
     ALLERGENS,

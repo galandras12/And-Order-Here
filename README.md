@@ -1,15 +1,30 @@
 # And Order Here — étteremkezelő rendszer
 
-Node.js + Express + Socket.io alapú étteremkezelő rendszer, fájlalapú (JSON)
-adattárolással, JWT-alapú bejelentkezéssel és valós idejű szinkronizációval.
-Eddig a projektváz, az adattárolási réteg, az autentikáció, a valós idejű
-kommunikációs réteg, az admin menükezelés és az asztaltérkép-szerkesztő készült
-el — a további funkciók (rendelésfelvétel, konyhai sor, készlet) a következő
-szegmensekben jönnek.
+**Egy étterem, egy rendszer, egy szerver.** A pincér, a konyha, a logisztika, a
+vezetőség és az online rendelő vendég ugyanazt az adatot látja — ugyanabban a
+pillanatban.
 
-Az egész egyetlen `npm start` paranccsal, egyetlen Node folyamatként és egyetlen
-porton fut (HTTP API + WebSocket együtt): nincs külön adatbázis-szerver,
-auth-szerver, socket-szerver, session-tároló, Redis adapter vagy üzenetsor.
+- **Minden felület egy helyen.** Rendelésfelvétel az asztalnál, konyhai sor a
+  szakácsnak, készlet a logisztikának, kimutatások a vezetőségnek, önkiszolgáló
+  rendelés a vendégnek — nem öt külön rendszer, hanem öt nézet ugyanarra.
+- **Valós idejű, várakozás nélkül.** Ha az admin átrendezi a termet vagy egy
+  tétel elfogy, az a pincér tabletjén azonnal látszik. Nincs frissítés gomb,
+  nincs „nálam még a régi van".
+- **Élő asztaltérkép.** A terem alaprajza pontosan úgy néz ki, ahogy a valóság:
+  látszik, melyik asztal rendel, melyik kért számlát, melyik van lefoglalva, és
+  hány online rendelés vár átvételre.
+- **Üzemeltetni is öröm.** Egyetlen `npm start`, egyetlen Node.js folyamat,
+  egyetlen port. Nincs adatbázis-szerver, nincs Redis, nincs üzenetsor — az
+  adatok egy JSON fájlban élnek, ami menteni is egyszerű.
+- **Tableten, telefonon, gépen.** Érintésre tervezett kezelés, PIN-kódos
+  gyorsbelépés a pultnál, jelszavas belépés az irodában.
+
+Technikailag: Node.js + Express + Socket.io, fájlalapú (lowdb/JSON) tárolás,
+JWT-alapú bejelentkezés, natív HTML/CSS/JavaScript kliensek — külső frontend
+keretrendszer nélkül. Eddig a projektváz, az adattárolási réteg, az
+autentikáció, a valós idejű réteg, az admin menükezelés, az asztaltérkép-
+szerkesztő és a pincér élő asztaltérképe készült el; a rendelésfelvétel, a
+konyhai sor és a készletkezelés a következő szegmensekben jön.
 
 ## Indítás
 
@@ -54,7 +69,11 @@ fut (`npm run dev` ugyanez, `node --watch` automatikus újraindítással).
 | `POST /api/auth/logout` | publikus — JWT esetén szerver oldalon nincs teendő |
 | `GET /api/auth/me` | bejelentkezés szükséges |
 | `GET /api/auth/restaurants` | publikus — étteremválasztó a PIN-es képernyőhöz |
-| `GET /api/waiter/*` | csak `waiter` |
+| `GET /api/waiter/tables` | csak `waiter` — az elrendezés (csak olvasás) |
+| `GET /api/waiter/zones` | csak `waiter` — zónák |
+| `GET /api/waiter/table-states` | csak `waiter` — szerveren számolt állapotok + online összesítő |
+| `POST /api/waiter/reservations` | csak `waiter` — foglalás, `table:reserved` eseménnyel |
+| `GET /api/waiter/tables/:id/reservations` | csak `waiter` |
 | `GET /api/kitchen/*` | csak `cook` |
 | `GET /api/admin/restaurant` | csak `admin` — étterem alapadatok |
 | `PUT /api/admin/restaurant` | csak `admin` — alapadatok mentése |
@@ -215,6 +234,8 @@ server/
     restaurantService.js  étterem alapadatok + validáció
     menuService.js        kategóriák, étlap tételek, extrák + üzleti szabályok
     floorPlanService.js   asztalok és zónák + törlésvédelem
+    floorStateService.js  asztalállapotok és online összesítő (pincér nézet)
+    reservationService.js foglalás validációval és ütközés-ellenőrzéssel
   middleware/
     requireAuth.js  JWT ellenőrzés az Authorization fejlécből
     requireRole.js  szerepkör szerinti szűrés
@@ -235,7 +256,12 @@ server/
   config.js     .env alapú konfiguráció
   index.js      belépési pont
 public/
-  waiter/ logistics/ kitchen/ online/   felületenkénti statikus fájlok
+  logistics/ kitchen/ online/   felületenkénti statikus fájlok
+  waiter/
+    index.html  asztaltérkép, menü, foglalás
+    floorMap.js Canvas rajzoló (nagyítás, pásztázás, találat-vizsgálat)
+    app.js      betöltés, valós idejű frissítés, foglalás
+    waiter.css  pincér-specifikus stílus
   admin/
     index.html  fülek: étterem, kategóriák, tételek, extrák, felhasználók
     app.js      közös mag: fülek, API hívás, űrlap- és hibakezelés
@@ -252,6 +278,33 @@ shared/
   constants.js      szerver és böngésző által is használt konstansok
   socketEvents.js   Socket.io esemény- és szobakatalógus
 ```
+
+## Pincér felület — élő asztaltérkép
+
+A `/waiter` felületen a pincér ugyanazt az elrendezést látja, amit az admin
+kialakított, **natív HTML5 Canvas**-ra rajzolva (külső könyvtár nélkül):
+
+| Jelzés | Jelentés |
+| --- | --- |
+| semleges szürke | szabad asztal |
+| zöld | rendelés alatt (nyitott, még nem fizetett rendelés) |
+| borostyán | számlát kért (a 8. szegmens előkészítése) |
+| óra ikon | lefoglalva — a foglalás ideje a menüben |
+| autó ikon a zónában | feldolgozásra váró online rendelés, darabszámmal |
+
+**Az állapotot mindig a szerver számolja** (`GET /api/waiter/table-states`) a
+nyitott rendelésekből és a foglalásokból — a kliens nem találgat.
+
+Asztalra koppintva menü nyílik: *Rendelés felvétele* (a 7. szegmensben készül
+el) és *Asztal lefoglalása* — utóbbi dátum- és időpontválasztóval, a végét a
+választott időtartamból számolva. A foglalás `table:reserved` eseményt küld, így
+minden nyitva lévő pincér-nézet azonnal látja.
+
+A térkép **egérrel és ujjal is kezelhető**: húzással pásztázható, két ujjal
+(pinch) vagy a +/− gombokkal nagyítható, az „Illesztés" gomb a teljes termet a
+képernyőre igazítja. A `table:status_changed`, `table:reserved`, `order:created`
+és `table:layout_changed` eseményekre a nézet magától frissül — oldalfrissítés
+nélkül, kis adatú újralekérdezéssel.
 
 ## Valós idejű réteg (Socket.io)
 
@@ -327,3 +380,21 @@ curl -X POST http://localhost:3000/api/_test/emit \
 
 Nyiss meg több felületet külön böngészőablakban, és nézd a konzolt: az esemény
 csak a megfelelő szobák klienseihez jut el.
+
+## Licenc
+
+**Minden jog fenntartva.**
+
+A projekt kódja és minden hozzá tartozó fájl a szerző tulajdona. A forráskód
+megtekintése ebben a nyilvános tárolóban **nem jogosít fel** a felhasználásra:
+a kód nem másolható, nem módosítható, nem terjeszthető és nem használható fel
+sem egészben, sem részben, a szerző előzetes írásbeli engedélye nélkül.
+
+A teljes szöveg a [LICENSE](LICENSE) fájlban olvasható.
+
+## Kapcsolat / Közreműködés
+
+Ha módosítást, továbbfejlesztést szeretnél javasolni, vagy engedélyt kérnél a
+kód felhasználására, keresd a fejlesztőt:
+
+**https://github.com/galandras12**

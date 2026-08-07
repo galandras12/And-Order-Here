@@ -155,7 +155,7 @@ PIN-nel rendelkező aktív felhasználóin megy végig hash-összehasonlítássa
 | `tableId` | string → `tables.id` \| null | online rendelésnél `null` |
 | `type` | string | `dine_in` \| `online` |
 | `waiterId` | string → `users.id` \| null | felvevő pincér, online rendelésnél `null` |
-| `status` | string | `new` → `accepted` → `in_preparation` → `ready` → `served` → `paid`, illetve `cancelled` |
+| `status` | string | `new` → `accepted` → `in_preparation` → `ready` → `served` → `bill_requested` → `paid`, illetve `cancelled` |
 | `createdAt` | string (ISO 8601) | felvétel ideje |
 
 ### orderItems
@@ -184,6 +184,11 @@ PIN-nel rendelkező aktív felhasználóin megy végig hash-összehasonlítássa
 Egy rendeléshez több fizetés is tartozhat (részfizetés, megosztott számla),
 ezért az összeget mindig összegezve kell nézni:
 `paymentRepository.getTotalPaid(orderId)`.
+
+A `paid` és a `cancelled` állapot zárja a rendelést; minden más — a
+`bill_requested` is — nyitottnak számít. Az asztaltérkép állapotát ebből
+számolja a `floorStateService`: `bill_requested` → „számlát kért",
+egyéb nyitott rendelés → „rendelés alatt", nyitott rendelés nélkül → „szabad".
 
 ## Használat a kódban
 
