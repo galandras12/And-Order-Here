@@ -38,7 +38,10 @@ router.use('/logistics', requireAuth, requireRole([ROLES.LOGISTICS]), logisticsR
 // Csak fejlesztoi modban elerheto, eles kornyezetben fel sem kerul.
 if (config.env !== 'production') {
   router.use('/_test', require('./_test'));
-  console.log('[api] Teszt vegpontok bekapcsolva: POST /api/_test/emit-order-created, /api/_test/emit');
+  console.log(
+    '[api] Teszt vegpontok bekapcsolva: POST /api/_test/emit-order-created, /api/_test/emit,' +
+      ' /api/_test/set-item-status'
+  );
 }
 
 // Ismeretlen API utvonal: JSON valasz (nem a HTML 404).

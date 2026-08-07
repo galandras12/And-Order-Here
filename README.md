@@ -79,6 +79,8 @@ fut (`npm run dev` ugyanez, `node --watch` automatikus újraindítással).
 | `GET /api/waiter/orders/:id` | csak `waiter` |
 | `GET /api/waiter/online-orders` | csak `waiter` |
 | `POST /api/waiter/orders` | csak `waiter` — rendelés leadása / bővítése |
+| `PATCH /api/waiter/order-items/:id/served` | csak `waiter` — kiszolgálás jelölése (csak `ready` tételre) |
+| `PATCH /api/waiter/orders/:id/serve-all-ready` | csak `waiter` — „Mindet kiszolgáltam" |
 | `GET /api/kitchen/*` | csak `cook` |
 | `GET /api/admin/restaurant` | csak `admin` — étterem alapadatok |
 | `PUT /api/admin/restaurant` | csak `admin` — alapadatok mentése |
@@ -268,6 +270,7 @@ public/
     floorMap.js Canvas rajzoló (nagyítás, pásztázás, találat-vizsgálat)
     app.js      betöltés, valós idejű frissítés, foglalás
     order.js    rendelésfelvétel: étlap, kosár, testreszabás, leadás
+    orderStatus.js  rendelés-áttekintő: állapotkövetés, kiszolgálás jelölése
     waiter.css  pincér-specifikus stílus
   admin/
     index.html  fülek: étterem, kategóriák, tételek, extrák, felhasználók
@@ -335,6 +338,45 @@ konyhai és admin szobába — erre épül majd a konyhai felület. Minden új t
 A kosár a leadásig a böngészőben (`localStorage`) is megmarad: hálózati hiba
 esetén nem vész el, a leadás egy gombnyomással újrapróbálható.
 
+### Élő státuszkövetés és kiszolgálás
+
+Az asztal menüjéből (*Rendelés áttekintése*), vagy a rendelésfelvételből az
+*Áttekintés* gombbal nyílik a rendelés-áttekintő. Itt az asztal **minden eddig
+leadott tétele** szerepel, állapot szerint csoportosítva — elöl az, amivel
+dolga van a pincérnek:
+
+| Állapot | Jelölés |
+| --- | --- |
+| `pending` — leadva | semleges szürke, óra ikon |
+| `preparing` — készül | borostyán kiemelés, főzőkalap ikon |
+| `ready` — elkészült | élénkzöld sáv és csengő ikon, rövid felvillanás |
+| `served` — kiszolgálva | elhalványított, lezárt tétel |
+
+Minden soron látszik a név, a mennyiség, az extrák (`+` jelöléssel), a
+megjegyzés, a **leadó pincér neve és a leadás ideje**, kiszolgálás után pedig a
+kivitel időpontja is.
+
+A tételek állapotát **a konyha állítja** (9. szegmens) — a pincér felület csak
+megjeleníti. Az `order_item:status_changed` eseményre a nyitott nézetek azonnal
+frissülnek, újratöltés nélkül. Ha egy tétel elkészül, a pincér akkor is
+észreveszi, ha épp az asztaltérképet nézi:
+
+- az asztalon **csengő jelvény** jelenik meg a várakozó tételek számával,
+- rövid, tágulú gyűrű villan fel az asztal körül a Canvas térképen,
+- értesítés (toast) írja ki, mi készült el és melyik asztalhoz,
+- diszkrét hangjelzés szól — a fejlécben ki-be kapcsolható, a beállítás a
+  készüléken marad.
+
+Elkészült tételnél megjelenik a **Kiszolgálva** gomb, több készétel esetén a
+**Mindet kiszolgáltam** gyorsgomb. A szerver csak `ready` állapotú tételt enged
+kiszolgáltnak jelölni (különben `409 item_not_ready`), rögzíti a `servedAt`
+időbélyeget, és tételenként küldi az `order_item:served` eseményt.
+
+Amikor a rendelés **minden tétele kiszolgált**, a *Nyomtatás* gomb aktívvá
+válik. Ezt a szerver számolja (`allItemsServed` mező a rendelés válaszában és az
+asztal állapotában), nem a kliens találgatja a listából. A tényleges nyomtatás a
+10. szegmensben készül el, addig a gomb placeholder üzenetet ad.
+
 ## Valós idejű réteg (Socket.io)
 
 A Socket.io ugyanarra a `http.Server` példányra csatlakozik, mint az Express —
@@ -377,6 +419,12 @@ onnan olvassa, így nem lehet elgépelni az eseményneveket:
 | `menu_item:availability_changed` | mind, az online felülettel együtt |
 | `table:layout_changed` | waiters, admin — az admin átrendezte a termet |
 
+A tétel-események (`order_item:status_changed`, `order_item:served`) a tétel
+mellé a rendelés rövid kísérőadatát is viszik
+(`{ orderItem, order: { id, tableId, tableLabel, type, allItemsServed } }`), így
+a fogadó felület a teljes rendelés újratöltése nélkül is meg tudja mutatni,
+melyik asztalról van szó.
+
 Kibocsátani mindig a `server/sockets/emitters.js` függvényeivel kell, sosem
 közvetlenül a Socket.io API-val — így egy helyen van, melyik esemény hova megy:
 
@@ -406,6 +454,12 @@ curl -X POST http://localhost:3000/api/_test/emit-order-created \
 # bármelyik katalógus-esemény kiváltása
 curl -X POST http://localhost:3000/api/_test/emit \
   -H 'Content-Type: application/json' -d '{"event":"menu_item:availability_changed"}'
+
+# valódi tétel állapotának átállítása (amíg a konyhai felület nincs kész):
+# ezzel próbálható ki a pincér felület élő státuszkövetése
+curl -X POST http://localhost:3000/api/_test/set-item-status \
+  -H 'Content-Type: application/json' \
+  -d '{"orderItemId":"item_...","status":"ready"}'
 ```
 
 Nyiss meg több felületet külön böngészőablakban, és nézd a konzolt: az esemény

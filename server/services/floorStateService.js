@@ -5,7 +5,12 @@ const {
   orderItemRepository,
   reservationRepository
 } = require('../db/repositories');
-const { ORDER_STATUS, ORDER_TYPE, TABLE_STATE } = require('../../shared/constants');
+const {
+  ORDER_STATUS,
+  ORDER_TYPE,
+  TABLE_STATE,
+  ORDER_ITEM_STATUS
+} = require('../../shared/constants');
 
 /**
  * Az asztalterkep elo allapota a pinceri felulethez.
@@ -65,17 +70,29 @@ function getTableStates(restaurantId, now = new Date()) {
     const openOrders = orderRepository.getOpenOrdersByTable(table.id);
     const reservation = nextReservationOf(table.id, now);
 
-    const itemCount = openOrders.reduce(
-      (total, order) => total + orderItemRepository.getByOrder(order.id).length,
-      0
+    const openItems = openOrders.reduce(
+      (all, order) => all.concat(orderItemRepository.getByOrder(order.id)),
+      []
     );
+
+    // Az elkeszult, de meg ki nem vitt tetelek: ezekbol lesz a terkepen a
+    // figyelemfelhivo jelzes, hogy a pincernek ne kelljen az asztal reszletes
+    // nezetet figyelnie.
+    const readyItemCount = openItems.filter(
+      (item) => item.status === ORDER_ITEM_STATUS.READY
+    ).length;
 
     return {
       tableId: table.id,
       label: table.label,
       status: statusOf(openOrders),
       openOrderCount: openOrders.length,
-      openItemCount: itemCount,
+      openItemCount: openItems.length,
+      readyItemCount,
+      // Van rendeles, es minden tetele kiszolgalt -> a blokk nyomtathato.
+      allItemsServed:
+        openItems.length > 0 &&
+        openItems.every((item) => item.status === ORDER_ITEM_STATUS.SERVED),
       // A legregebbi nyitott rendeles ideje - ebbol latszik, mennyit var az asztal.
       oldestOrderAt: openOrders.length
         ? openOrders

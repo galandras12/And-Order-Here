@@ -45,6 +45,7 @@
       <section class="card">
         <div class="floor-toolbar">
           <button type="button" class="btn btn--ghost btn--sm" data-map-refresh>Frissítés</button>
+          <button type="button" class="btn btn--ghost btn--sm" data-sound-toggle aria-pressed="true">🔔 Hang: be</button>
           <span class="floor-toolbar__spacer"></span>
           <div class="zoom-group">
             <button type="button" class="btn btn--ghost btn--icon-sq" data-map-zoom-out aria-label="Kicsinyítés">−</button>
@@ -67,6 +68,7 @@
             <p class="map-menu__meta" data-menu-meta></p>
             <div class="map-menu__actions">
               <button type="button" class="btn btn--sm" data-menu-order>Rendelés felvétele</button>
+              <button type="button" class="btn btn--ghost btn--sm" data-menu-status hidden>Rendelés áttekintése</button>
               <button type="button" class="btn btn--ghost btn--sm" data-menu-reserve>Asztal lefoglalása</button>
               <button type="button" class="btn btn--ghost btn--sm" data-menu-close>Bezárás</button>
             </div>
@@ -78,6 +80,7 @@
           <span class="legend__item"><span class="legend__swatch legend__swatch--ordering"></span> rendelés alatt</span>
           <span class="legend__item"><span class="legend__swatch legend__swatch--bill"></span> számlát kért</span>
           <span class="legend__item">🕐 lefoglalva</span>
+          <span class="legend__item"><span class="legend__swatch legend__swatch--ready"></span> elkészült étel vár</span>
           <span class="legend__item"><span class="legend__swatch legend__swatch--zone"></span> zóna · 🚗 online rendelés</span>
           <span class="legend__item" data-map-summary></span>
         </div>
@@ -138,7 +141,10 @@
         <h2 class="order-head__title" data-order-title>Rendelésfelvétel</h2>
         <p class="order-head__meta" data-order-meta></p>
       </div>
-      <button type="button" class="btn btn--ghost btn--inline" data-order-close>Vissza a térképhez</button>
+      <div class="order-head__actions">
+        <button type="button" class="btn btn--ghost btn--inline" data-order-status>Áttekintés</button>
+        <button type="button" class="btn btn--ghost btn--inline" data-order-close>Vissza a térképhez</button>
+      </div>
     </header>
 
     <div class="order-body">
@@ -171,6 +177,34 @@
         </div>
       </aside>
     </div>
+  </div>
+
+  <!-- Rendelés áttekintése: élő státuszkövetés és kiszolgálás -->
+  <div class="order-view status-view" data-status-view hidden>
+    <header class="order-head">
+      <div>
+        <h2 class="order-head__title" data-status-title>Rendelés áttekintése</h2>
+        <p class="order-head__meta" data-status-meta></p>
+      </div>
+      <div class="order-head__actions">
+        <button type="button" class="btn btn--inline" data-status-serve-all hidden>Mindet kiszolgáltam</button>
+        <button type="button" class="btn btn--ghost btn--inline" data-status-print disabled>Nyomtatás</button>
+        <button type="button" class="btn btn--ghost btn--inline" data-status-order>Új tétel</button>
+        <button type="button" class="btn btn--ghost btn--inline" data-status-close>Vissza a térképhez</button>
+      </div>
+    </header>
+
+    <div class="status-body">
+      <div data-status-groups></div>
+      <p class="status-empty" data-status-empty hidden>
+        Ehhez az asztalhoz még nincs leadott tétel.
+      </p>
+    </div>
+
+    <footer class="status-foot">
+      <span>Rendelés összesen</span>
+      <span class="cart-total__value" data-status-total>0 Ft</span>
+    </footer>
   </div>
 
   <!-- Tétel testreszabása -->
@@ -225,6 +259,7 @@
   <script src="/shared/auth.js"></script>
   <script src="/waiter/floorMap.js"></script>
   <script src="/waiter/order.js"></script>
+  <script src="/waiter/orderStatus.js"></script>
   <script src="/waiter/app.js"></script>
 </body>
 </html>

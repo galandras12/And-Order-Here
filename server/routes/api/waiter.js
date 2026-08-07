@@ -136,6 +136,35 @@ router.post('/orders', async (req, res, next) => {
   }
 });
 
+/**
+ * PATCH /api/waiter/order-items/:id/served
+ *
+ * Egy elkeszult (`ready`) tetel kiszolgaltnak jelolese: servedAt idobelyeg +
+ * order_item:served socket esemeny. Mar kiszolgalt tetelnel nem hiba, csak nem
+ * tortenik semmi (changed: false).
+ */
+router.patch('/order-items/:id/served', async (req, res, next) => {
+  try {
+    res.json(await orderService.markItemServed(req.user.restaurantId, req.params.id));
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * PATCH /api/waiter/orders/:orderId/serve-all-ready
+ *
+ * "Mindet kiszolgáltam": a rendeles osszes `ready` tetele egyszerre kerul
+ * `served` allapotba, tetelenkent kikuldott esemennyel.
+ */
+router.patch('/orders/:orderId/serve-all-ready', async (req, res, next) => {
+  try {
+    res.json(await orderService.serveAllReady(req.user.restaurantId, req.params.orderId));
+  } catch (err) {
+    next(err);
+  }
+});
+
 /** GET /api/waiter/tables/:id/reservations - egy asztal foglalasai. */
 router.get('/tables/:id/reservations', (req, res, next) => {
   try {

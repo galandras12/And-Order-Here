@@ -4,6 +4,7 @@
 const express = require('express');
 
 const emitters = require('../../sockets/emitters');
+const orderService = require('../../services/orderService');
 const { optionalAuth } = require('../../middleware');
 const { restaurantRepository, tableRepository, menuItemRepository } = require('../../db/repositories');
 const { ORDER_TYPE, ORDER_STATUS, ORDER_ITEM_STATUS } = require('../../../shared/constants');
@@ -129,6 +130,31 @@ router.post('/emit', optionalAuth, (req, res) => {
   }
 
   res.json({ emitted: handler(), event, restaurantId });
+});
+
+/**
+ * POST /api/_test/set-item-status
+ * Body: { orderItemId, status, restaurantId? }
+ *
+ * Egy valodi rendelesi tetel allapotat allitja at, es kikuldi a hozza tartozo
+ * esemenyt. Amig a konyhai felulet (9. szegmens) nincs kesz, ezzel probalhato
+ * ki, hogy a pinceri nezet valos idoben koveti-e a "készül" / "elkészült"
+ * allapotokat. A konyhai vegpont elkeszultevel ez a vegpont torlendo.
+ */
+router.post('/set-item-status', optionalAuth, async (req, res, next) => {
+  const restaurantId = resolveRestaurantId(req);
+  const { orderItemId, status } = req.body || {};
+
+  if (!restaurantId) {
+    res.status(400).json({ error: 'no_restaurant', message: 'Nincs etterem az adatbazisban.' });
+    return;
+  }
+
+  try {
+    res.json(await orderService.updateItemStatus(restaurantId, orderItemId, status));
+  } catch (err) {
+    next(err);
+  }
 });
 
 module.exports = router;

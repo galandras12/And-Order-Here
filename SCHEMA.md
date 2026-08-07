@@ -177,6 +177,16 @@ A `waiterId` és a `createdAt` tétel szinten is tárolódik, nem csak a
 rendelésen: egy asztalhoz több körben, akár más-más pincér is adhat tételt, és
 a felületen látszania kell, ki mit és mikor adott le.
 
+A `status` a konyhai folyamat állapota: a tétel `pending` állapotban jön létre,
+a konyha állítja `preparing`, majd `ready` értékre, a pincér pedig `served`
+állapotba jelöli, amikor kivitte. `served` állapotnál a `servedAt` automatikusan
+kitöltődik, más állapotra váltáskor kiürül.
+
+„Minden tétel kiszolgálva" nincs külön mezőben tárolva: a rendelés
+`allItemsServed` értékét a service réteg a tételek állapotából számolja
+(`orderService.toOrderView`, `orderItemRepository.isOrderFullyServed`), így nem
+lehet a tárolt adattal ellentmondásba kerülni.
+
 ### payments
 
 | Mező | Típus | Leírás |

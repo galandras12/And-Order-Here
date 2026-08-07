@@ -27,9 +27,25 @@
   var MIN_SCALE = 0.25;
   var MAX_SCALE = 3;
 
+  /** Meddig tart az "elkeszult etel" figyelemfelhivo gyuru az asztal korul. */
+  var FLASH_MS = 2200;
+
+  /** A felhasznalo kerte az animaciok mellozeset (kisegito lehetoseg). */
+  function prefersReducedMotion() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+
+  function now() {
+    return window.performance && window.performance.now ? window.performance.now() : Date.now();
+  }
+
   function createFloorMap(options) {
     var canvas = options.canvas;
     var ctx = canvas.getContext('2d');
+
+    /** tableId -> a felvillanas kezdete; ures objektum eseten all az animacio. */
+    var flashes = {};
+    var animHandle = null;
 
     var map = {
       tables: [],
@@ -174,15 +190,88 @@
       // kepernyo-koordinatak megegyszer atmennenek a transzformacion.
       map.tables.forEach(drawTableIcons);
       map.zones.forEach(drawZoneBadge);
+      drawFlashes();
     }
 
-    /** Foglalas orajele az asztal jobb felso sarkanal, kepernyo-meretben. */
+    /**
+     * Asztalhoz tartozo ikonok kepernyo-meretben: foglalas orajele a jobb felso,
+     * az elkeszult (ready) tetelek csengoje a bal felso sarokban.
+     */
     function drawTableIcons(table) {
       var state = map.states[table.id];
-      if (!state || !state.reservation) return;
+      if (!state) return;
 
-      var corner = toScreen(table.posX + table.width, table.posY);
-      drawClock(corner.x - 4, corner.y + 4, state.reservation.isActive);
+      if (state.reservation) {
+        var corner = toScreen(table.posX + table.width, table.posY);
+        drawClock(corner.x - 4, corner.y + 4, state.reservation.isActive);
+      }
+
+      if (state.readyItemCount) {
+        var left = toScreen(table.posX, table.posY);
+        drawBell(left.x + 4, left.y + 4, state.readyItemCount);
+      }
+    }
+
+    /**
+     * Elkeszult etel jelzese: rovid ideig tagulo gyuru az asztal korul.
+     *
+     * A pincer igy akkor is eszreveszi, ha eppen mashova nez - a jelvenytol
+     * elteroen ez mozgassal hivja fel a figyelmet, de par masodperc utan
+     * magatol elmulik, hogy ne zavarja a munkat.
+     */
+    function drawFlashes() {
+      var current = now();
+
+      Object.keys(flashes).forEach(function (tableId) {
+        var elapsed = current - flashes[tableId];
+        var table = tableById(tableId);
+
+        if (elapsed > FLASH_MS || !table) {
+          delete flashes[tableId];
+          return;
+        }
+
+        var center = toScreen(table.posX + table.width / 2, table.posY + table.height / 2);
+        var radius = (Math.hypot(table.width, table.height) / 2) * map.view.scale;
+        var wave = (elapsed % 730) / 730;
+        var alpha = 0.9 * (1 - wave) * (1 - elapsed / FLASH_MS);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(center.x, center.y, radius + 6 + wave * 26, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(53, 196, 106, ' + alpha.toFixed(3) + ')';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.restore();
+      });
+    }
+
+    function tableById(tableId) {
+      return map.tables.filter(function (table) { return table.id === tableId; })[0] || null;
+    }
+
+    /** Az animacios kor csak addig fut, amig van elo felvillanas. */
+    function animate() {
+      animHandle = null;
+      draw();
+      if (Object.keys(flashes).length) animHandle = window.requestAnimationFrame(animate);
+    }
+
+    /**
+     * Egy asztal kiemelese (elkeszult etel erkezett).
+     * @param {string} tableId
+     */
+    function flashTable(tableId) {
+      if (!tableId || !tableById(tableId)) return;
+
+      if (prefersReducedMotion()) {
+        // Mozgas nelkul is frissitunk: a csengo jelveny megjelenik.
+        draw();
+        return;
+      }
+
+      flashes[tableId] = now();
+      if (!animHandle) animHandle = window.requestAnimationFrame(animate);
     }
 
     /** Halvany racs, hogy a vaszon ne hasson uresnek. */
@@ -393,6 +482,59 @@
       ctx.restore();
     }
 
+    /**
+     * Csengo ikon: az asztalon van mar elkeszult, de meg ki nem vitt tetel.
+     * Erosen kontrasztos (telt zold korong), hogy futolagos pillantasra is
+     * lathato legyen.
+     */
+    function drawBell(x, y, count) {
+      ctx.save();
+      ctx.translate(x, y);
+
+      ctx.beginPath();
+      ctx.arc(0, 0, 13, 0, Math.PI * 2);
+      ctx.fillStyle = '#35c46a';
+      ctx.fill();
+      ctx.strokeStyle = '#0b2415';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // harangtest
+      ctx.fillStyle = '#062a13';
+      ctx.beginPath();
+      ctx.moveTo(-6, 3);
+      ctx.lineTo(6, 3);
+      ctx.lineTo(4.2, 0.8);
+      ctx.lineTo(4.2, -1.5);
+      ctx.arc(0, -1.5, 4.2, 0, Math.PI, true);
+      ctx.lineTo(-4.2, 0.8);
+      ctx.closePath();
+      ctx.fill();
+
+      // nyelv
+      ctx.beginPath();
+      ctx.arc(0, 4, 1.7, 0, Math.PI);
+      ctx.fill();
+
+      if (count > 1) {
+        ctx.beginPath();
+        ctx.arc(11, -10, 8, 0, Math.PI * 2);
+        ctx.fillStyle = '#062a13';
+        ctx.fill();
+        ctx.strokeStyle = '#35c46a';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.fillStyle = '#eafff1';
+        ctx.font = '700 10px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(count), 11, -9.5);
+      }
+
+      ctx.restore();
+    }
+
     /* ---------------------------------------------------------- talalatok */
 
     /** Melyik asztal / ikon van a kepernyo adott pontja alatt. */
@@ -464,6 +606,7 @@
       setLayout: setLayout,
       setStates: setStates,
       select: select,
+      flashTable: flashTable,
       getScale: function () { return map.view.scale; },
       MIN_SCALE: MIN_SCALE,
       MAX_SCALE: MAX_SCALE

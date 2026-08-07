@@ -12,6 +12,11 @@
   var pending = { table: null, mode: null };
   var toastTimer = null;
 
+  /** Az elkeszult etel hangjelzesenek kapcsoloja (keszuleken megjegyezve). */
+  var SOUND_KEY = 'aoh.waiter.sound';
+  var soundOn = true;
+  var audioCtx = null;
+
   /* ----------------------------------------------------------- segedek */
 
   function el(selector) {
@@ -32,6 +37,58 @@
     toastTimer = window.setTimeout(function () {
       box.hidden = true;
     }, isError ? 6000 : 3000);
+  }
+
+  /* ------------------------------------------------------- hangjelzes */
+
+  /**
+   * Diszkret ket hangos jelzes, ha etel keszult el.
+   *
+   * Sajat generalt hang (Web Audio), nem kulso fajl - igy nincs plusz keres, es
+   * offline is megszolal. A bongeszo csak felhasznaloi interakcio utan enged
+   * hangot; a PIN-es belepes koppintasai ezt mar biztositjak.
+   */
+  function beep() {
+    if (!soundOn) return;
+
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      if (!audioCtx) audioCtx = new Ctx();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      var start = audioCtx.currentTime;
+      [880, 1174.7].forEach(function (frequency, index) {
+        var at = start + index * 0.13;
+        var osc = audioCtx.createOscillator();
+        var gain = audioCtx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.value = frequency;
+        gain.gain.setValueAtTime(0.0001, at);
+        gain.gain.exponentialRampToValueAtTime(0.1, at + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.12);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(at);
+        osc.stop(at + 0.13);
+      });
+    } catch (err) {
+      /* a hangjelzes csak kiegeszites: ha nem megy, a vizualis jelzes marad */
+    }
+  }
+
+  function setSound(on) {
+    soundOn = on;
+    var button = el('[data-sound-toggle]');
+    button.setAttribute('aria-pressed', on ? 'true' : 'false');
+    button.textContent = on ? '🔔 Hang: be' : '🔕 Hang: ki';
+    try {
+      window.localStorage.setItem(SOUND_KEY, on ? 'on' : 'off');
+    } catch (err) {
+      /* privat bongeszes: csak erre a munkamenetre marad meg */
+    }
   }
 
   /** ISO idopont rovid, magyar formatumban. */
@@ -100,15 +157,19 @@
 
   function renderSummary(data) {
     var counts = { free: 0, ordering: 0, bill_requested: 0, reserved: 0 };
+    var ready = 0;
+
     (data.states || []).forEach(function (state) {
       counts[state.status] = (counts[state.status] || 0) + 1;
       if (state.reservation) counts.reserved += 1;
+      ready += state.readyItemCount || 0;
     });
 
     el('[data-map-summary]').textContent =
       counts.ordering + ' rendelés alatt · ' +
       counts.free + ' szabad · ' +
       counts.reserved + ' lefoglalva' +
+      (ready ? ' · ' + ready + ' elkészült tétel vár' : '') +
       (data.online && data.online.activeCount ? ' · ' + data.online.activeCount + ' online rendelés' : '');
   }
 
@@ -127,6 +188,7 @@
       el('[data-menu-meta]').textContent =
         hit.online.activeCount + ' feldolgozásra váró online rendelés.';
       el('[data-menu-reserve]').hidden = true;
+      el('[data-menu-status]').hidden = hit.online.activeCount === 0;
     } else {
       var table = hit.table;
       var state = hit.state || {};
@@ -138,6 +200,7 @@
       if (state.status === 'ordering') meta.push('Rendelés alatt (' + state.openItemCount + ' tétel)');
       else if (state.status === 'bill_requested') meta.push('Számlát kért');
       else meta.push('Szabad');
+      if (state.readyItemCount) meta.push(state.readyItemCount + ' elkészült tétel vár');
       if (table.comment) meta.push(table.comment);
       if (state.reservation) {
         meta.push(
@@ -150,6 +213,8 @@
       }
       el('[data-menu-meta]').textContent = meta.join(' · ');
       el('[data-menu-reserve]').hidden = false;
+      // Attekinteni csak akkor van mit, ha van nyitott rendeles az asztalon.
+      el('[data-menu-status]').hidden = !state.openOrderCount;
 
       map.select(table.id);
     }
@@ -238,38 +303,58 @@
   /* ------------------------------------------------- rendelesfelvetel */
 
   /**
-   * Rendelesfelvetel megnyitasa a kijelolt asztalhoz, vagy - az auto ikonrol -
-   * a legregebbi meg le nem zart online rendeleshez.
+   * A kijelolt asztal, vagy - az auto ikonrol - a legregebbi meg le nem zart
+   * online rendeles. Ebbol a leirasbol dolgozik a rendelesfelvetel es az
+   * attekinto nezet is.
+   *
+   * @returns {Promise<object|null>}
    */
-  function openOrderView() {
-    closeMenu();
-
+  function resolveContext() {
     if (pending.mode === 'online') {
-      api('/api/waiter/online-orders')
-        .then(function (data) {
-          var order = (data.orders || [])[0];
-          if (!order) {
-            toast('Nincs feldolgozásra váró online rendelés.', true);
-            return;
-          }
-          return window.AndOrderOrderView.open({
-            type: 'order',
-            orderId: order.id,
-            label: 'Online rendelés'
-          });
-        })
-        .catch(function (err) {
-          toast(err.message, true);
-        });
-      return;
+      return api('/api/waiter/online-orders').then(function (data) {
+        var order = (data.orders || [])[0];
+        if (!order) {
+          toast('Nincs feldolgozásra váró online rendelés.', true);
+          return null;
+        }
+        return { type: 'order', orderId: order.id, label: 'Online rendelés' };
+      });
     }
 
-    if (!pending.table) return;
-    window.AndOrderOrderView.open({
+    if (!pending.table) return Promise.resolve(null);
+    return Promise.resolve({
       type: 'table',
       tableId: pending.table.id,
       label: pending.table.label
     });
+  }
+
+  /** Rendelesfelvetel megnyitasa. */
+  function openOrderView(context) {
+    closeMenu();
+
+    var resolved = context ? Promise.resolve(context) : resolveContext();
+    resolved
+      .then(function (target) {
+        if (target) window.AndOrderOrderView.open(target);
+      })
+      .catch(function (err) {
+        toast(err.message, true);
+      });
+  }
+
+  /** Rendeles-attekinto (allapotkovetes es kiszolgalas) megnyitasa. */
+  function openStatusView(context) {
+    closeMenu();
+
+    var resolved = context ? Promise.resolve(context) : resolveContext();
+    resolved
+      .then(function (target) {
+        if (target) window.AndOrderOrderStatus.open(target);
+      })
+      .catch(function (err) {
+        toast(err.message, true);
+      });
   }
 
   /* ------------------------------------------------ eger es erintes */
@@ -400,7 +485,20 @@
 
     el('[data-menu-close]').addEventListener('click', closeMenu);
     el('[data-menu-reserve]').addEventListener('click', openReserveDialog);
-    el('[data-menu-order]').addEventListener('click', openOrderView);
+    el('[data-menu-order]').addEventListener('click', function () { openOrderView(); });
+    el('[data-menu-status]').addEventListener('click', function () { openStatusView(); });
+
+    // A rendelesfelvetelbol atlepes az attekintesre ugyanarra az asztalra.
+    el('[data-order-status]').addEventListener('click', function () {
+      var context = window.AndOrderOrderView.getContext();
+      window.AndOrderOrderView.close();
+      if (context) openStatusView(context);
+    });
+
+    el('[data-sound-toggle]').addEventListener('click', function () {
+      setSound(!soundOn);
+      if (soundOn) beep();
+    });
 
     var form = el('[data-reserve-form]');
     form.addEventListener('submit', submitReservation);
@@ -421,6 +519,42 @@
     });
   }
 
+  /** Minden nyitott nezet frissitese egy esemeny utan. */
+  function refreshViews() {
+    loadStates();
+    window.AndOrderOrderView.refresh();
+    window.AndOrderOrderStatus.refresh();
+  }
+
+  /** itemId -> mikor jeleztuk; ugyanarrol a tetelrol ne szoljunk ketszer. */
+  var announced = {};
+
+  /**
+   * "Elkészült" jelzes: felvillano asztal a terkepen + toast + hangjelzes.
+   *
+   * Ugyanarra a tetelre ket forrasbol is erkezhet jelzes (a socket esemeny es a
+   * nyitott attekinto ujratoltese), ezert rovid ideig szurunk az ismetlesre.
+   *
+   * @param {object} item a tetel (nev, mennyiseg)
+   * @param {string} [tableLabel] melyik asztalhoz tartozik
+   * @param {string} [tableId] a felvillantando asztal
+   */
+  function announceReady(item, tableLabel, tableId) {
+    var now = Date.now();
+    Object.keys(announced).forEach(function (id) {
+      if (now - announced[id] > 60000) delete announced[id];
+    });
+    if (announced[item.id] && now - announced[item.id] < 5000) return;
+    announced[item.id] = now;
+
+    toast(
+      'Elkészült: ' + item.quantity + '× ' + item.name +
+        (tableLabel ? ' – ' + tableLabel : '')
+    );
+    beep();
+    if (tableId) map.flashTable(tableId);
+  }
+
   /** A valos ideju esemenyek: allapot- es elrendezes-frissites ujratoltes nelkul. */
   function setupSocket() {
     var socket = window.AndOrderSocket;
@@ -433,14 +567,27 @@
     });
 
     // Allapotot erinto esemenyek: eleg a kis table-states valaszt ujra kerni.
-    // Ha eppen nyitva van a rendelesfelvetel, az is frissul (mas pincer is
-    // adhatott tetelt ugyanahhoz az asztalhoz).
+    // Ha eppen nyitva van a rendelesfelvetel vagy az attekinto, azok is
+    // frissulnek (mas pincer is adhatott tetelt ugyanahhoz az asztalhoz).
     ['table:status_changed', 'table:reserved', 'order:created', 'order_item:added',
-      'order_item:status_changed', 'order_item:served'].forEach(function (event) {
+      'order_item:served'].forEach(function (event) {
       socket.on(event, function () {
-        loadStates();
-        window.AndOrderOrderView.refresh();
+        refreshViews();
       });
+    });
+
+    // A konyhai allapotvaltas (9. szegmens) ezen az esemenyen erkezik. Az
+    // elkeszult etelrol kulon is szolunk: felvillan az asztal a terkepen,
+    // toast es - ha be van kapcsolva - rovid hangjelzes hivja fel ra a
+    // figyelmet, hogy ne kelljen a reszletes nezetet figyelni.
+    socket.on('order_item:status_changed', function (payload) {
+      refreshViews();
+
+      var item = payload && payload.orderItem;
+      if (!item || item.status !== 'ready') return;
+
+      var order = (payload && payload.order) || {};
+      announceReady(item, order.tableLabel, order.tableId);
     });
 
     // Az admin atrendezte a termet: az elrendezes is valtozott.
@@ -469,6 +616,29 @@
         loadStates();
       }
     });
+
+    window.AndOrderOrderStatus.setup({
+      api: api,
+      toast: toast,
+      // Kiszolgalas utan a terkep is frissul (elfogyhatott az "elkeszult" jelzes).
+      onChanged: function () {
+        loadStates();
+      },
+      onTakeOrder: function (context) {
+        openOrderView(context);
+      },
+      // Ha nyitva van az attekinto, es ott lesz kesz egy tetel, ugyanugy szolunk.
+      onReadyItems: function (items) {
+        var order = window.AndOrderOrderStatus.state.order;
+        announceReady(items[0], order && order.tableLabel, order && order.tableId);
+      }
+    });
+
+    try {
+      setSound(window.localStorage.getItem(SOUND_KEY) !== 'off');
+    } catch (err) {
+      setSound(true);
+    }
 
     map.resize();
 

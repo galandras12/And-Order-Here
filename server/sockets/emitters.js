@@ -94,18 +94,27 @@ function emitOrderItemsAdded(order, items) {
 /**
  * Rendelesi tetel allapotvaltasa (pending -> preparing -> ready -> served).
  *
+ * A payload a tetel melle a rendeles rovid kiseroadatat is viszi (melyik
+ * asztal, lezarult-e mar minden tetel), igy a fogado felulet a teljes rendeles
+ * ujratoltese nelkul is tud ertesitest mutatni.
+ *
  * @param {string} restaurantId a tetel a rendelesen keresztul tartozik etteremhez
  * @param {object} orderItem
+ * @param {object} [order] rovid rendeles-kiseroadat
  */
-function emitOrderItemStatusChanged(restaurantId, orderItem) {
+function emitOrderItemStatusChanged(restaurantId, orderItem, order = null) {
   return emitToRooms(staffRooms(restaurantId), SOCKET_EVENTS.ORDER_ITEM_STATUS_CHANGED, {
-    orderItem
+    orderItem,
+    order
   });
 }
 
 /** Tetel kiszolgalva - a pincer es a konyha lathatja, az admin kovetheti. */
-function emitOrderItemServed(restaurantId, orderItem) {
-  return emitToRooms(staffRooms(restaurantId), SOCKET_EVENTS.ORDER_ITEM_SERVED, { orderItem });
+function emitOrderItemServed(restaurantId, orderItem, order = null) {
+  return emitToRooms(staffRooms(restaurantId), SOCKET_EVENTS.ORDER_ITEM_SERVED, {
+    orderItem,
+    order
+  });
 }
 
 /** Asztal allapotvaltasa (szabad / foglalt / fizetesre var). */

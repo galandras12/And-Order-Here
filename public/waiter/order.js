@@ -539,6 +539,11 @@
     return !el('[data-order-view]').hidden;
   }
 
+  /** A most szerkesztett asztal / rendeles - az attekinto nezet ebbol nyilik. */
+  function getContext() {
+    return state.context;
+  }
+
   /** A nyitott rendeles ujratoltese (socket esemenyre). */
   function refresh() {
     if (!isOpen() || !state.context) return Promise.resolve();
@@ -596,6 +601,7 @@
     close: close,
     isOpen: isOpen,
     refresh: refresh,
+    getContext: getContext,
     state: state
   };
 })(window, document);

@@ -7,7 +7,12 @@ const {
   extraRepository,
   userRepository
 } = require('../db/repositories');
-const { emitOrderCreated, emitOrderItemsAdded } = require('../sockets/emitters');
+const {
+  emitOrderCreated,
+  emitOrderItemsAdded,
+  emitOrderItemStatusChanged,
+  emitOrderItemServed
+} = require('../sockets/emitters');
 const {
   NotFoundError,
   ConflictError,
@@ -18,12 +23,12 @@ const {
 const { ORDER_TYPE, ORDER_STATUS, ORDER_ITEM_STATUS } = require('../../shared/constants');
 
 /**
- * Rendelesfelvetel a pinceri feluletrol.
+ * Rendelesfelvetel es tetel-allapotkezeles a pinceri feluletrol.
  *
  * Csak a repository interfeszen keresztul er adatot. Itt vannak az uzleti
  * szabalyok is: egy asztalhoz nem nyitunk parhuzamos rendelest, a tetelek a
- * meglevo nyitott rendeleshez adodnak, es minden uj tetel `pending` allapotban
- * indul.
+ * meglevo nyitott rendeleshez adodnak, minden uj tetel `pending` allapotban
+ * indul, es kiszolgaltnak csak a mar elkeszult (`ready`) tetel jelolheto.
  */
 
 const MAX_QUANTITY = 99;
@@ -31,6 +36,8 @@ const MAX_ITEMS_PER_SUBMIT = 50;
 
 /** Lezart allapotok - ezekhez mar nem lehet tetelt adni. */
 const CLOSED_STATUSES = [ORDER_STATUS.PAID, ORDER_STATUS.CANCELLED];
+
+const VALID_ITEM_STATUSES = Object.values(ORDER_ITEM_STATUS);
 
 /* ------------------------------------------------------------------- menu */
 
@@ -66,39 +73,69 @@ function waiterNameOf(waiterId) {
 }
 
 /**
+ * Egy tetel megjelenitesre kesz kepe: feloldott nev, ar, extrak, allapot, es a
+ * "ki adta le, mikor" adatok.
+ *
+ * @param {object} item a tarolt orderItem rekord
+ * @param {object} [order] a szulo rendeles (a hianyzo mezok innen egeszulnek ki)
+ */
+function toItemView(item, order = null) {
+  const menuItem = menuItemRepository.findById(item.menuItemId);
+  const extras = extraRepository.getByIds(item.extraIds);
+  const unitPrice = (menuItem ? menuItem.price : 0) +
+    extras.reduce((total, extra) => total + (extra.price || 0), 0);
+
+  const waiterId = item.waiterId || (order && order.waiterId) || null;
+
+  return {
+    id: item.id,
+    orderId: item.orderId,
+    menuItemId: item.menuItemId,
+    // A tetel neve a rendeles idejen ervenyes etlapbol jon; ha a tetelt
+    // kesobb toroltek, legalabb az id latszik.
+    name: menuItem ? menuItem.name : '(törölt tétel)',
+    basePrice: menuItem ? menuItem.price : 0,
+    quantity: item.quantity,
+    comment: item.comment || '',
+    extras: extras.map((extra) => ({ id: extra.id, name: extra.name, price: extra.price })),
+    unitPrice,
+    lineTotal: unitPrice * item.quantity,
+    status: item.status,
+    servedAt: item.servedAt || null,
+    createdAt: item.createdAt || (order ? order.createdAt : null),
+    waiterId,
+    waiterName: waiterNameOf(waiterId)
+  };
+}
+
+/** Allapotonkenti darabszamok - a felulet ebbol csoportosit, nem szamol ujra. */
+function countByStatus(items) {
+  const counts = {};
+  VALID_ITEM_STATUSES.forEach((status) => {
+    counts[status] = 0;
+  });
+  items.forEach((item) => {
+    counts[item.status] = (counts[item.status] || 0) + 1;
+  });
+  return counts;
+}
+
+/**
  * Egy rendeles teljes, megjelenitesre kesz kepe: feloldott tetelnevek, arak,
- * extrak, a leado pincer neve es a leadas ideje.
+ * extrak, a leado pincer neve, a leadas ideje es az allapotok osszesitese.
+ *
+ * Az `allItemsServed` szandekosan itt, a szerveren dol el: a felulet ne
+ * talalgassa a listabol, hogy nyomtathato-e mar a blokk.
  */
 function toOrderView(order) {
   if (!order) return null;
 
-  const items = orderItemRepository.getByOrder(order.id).map((item) => {
-    const menuItem = menuItemRepository.findById(item.menuItemId);
-    const extras = extraRepository.getByIds(item.extraIds);
-    const unitPrice = (menuItem ? menuItem.price : 0) +
-      extras.reduce((total, extra) => total + (extra.price || 0), 0);
-
-    return {
-      id: item.id,
-      menuItemId: item.menuItemId,
-      // A tetel neve a rendeles idejen ervenyes etlapbol jon; ha a tetelt
-      // kesobb toroltek, legalabb az id latszik.
-      name: menuItem ? menuItem.name : '(törölt tétel)',
-      basePrice: menuItem ? menuItem.price : 0,
-      quantity: item.quantity,
-      comment: item.comment || '',
-      extras: extras.map((extra) => ({ id: extra.id, name: extra.name, price: extra.price })),
-      unitPrice,
-      lineTotal: unitPrice * item.quantity,
-      status: item.status,
-      servedAt: item.servedAt || null,
-      createdAt: item.createdAt || order.createdAt,
-      waiterId: item.waiterId || order.waiterId || null,
-      waiterName: waiterNameOf(item.waiterId || order.waiterId)
-    };
-  });
+  const items = orderItemRepository
+    .getByOrder(order.id)
+    .map((item) => toItemView(item, order));
 
   const table = order.tableId ? tableRepository.findById(order.tableId) : null;
+  const statusCounts = countByStatus(items);
 
   return {
     id: order.id,
@@ -112,7 +149,38 @@ function toOrderView(order) {
     waiterName: waiterNameOf(order.waiterId),
     items: items.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt)),
     itemCount: items.reduce((total, item) => total + item.quantity, 0),
-    total: items.reduce((total, item) => total + item.lineTotal, 0)
+    total: items.reduce((total, item) => total + item.lineTotal, 0),
+    statusCounts,
+    readyCount: statusCounts[ORDER_ITEM_STATUS.READY],
+    servedCount: statusCounts[ORDER_ITEM_STATUS.SERVED],
+    // Minden tetel kiszolgalva -> a blokk nyomtathato (10. szegmens).
+    allItemsServed: items.length > 0 && items.every(
+      (item) => item.status === ORDER_ITEM_STATUS.SERVED
+    )
+  };
+}
+
+/**
+ * Rovid rendeles-kiseroadat a socket esemenyekhez.
+ *
+ * Igy a fogado felulet (pincer, kesobb konyha) a teljes rendeles ujratoltese
+ * nelkul is tudja, melyik asztalrol van szo, es hogy elfogyott-e mar minden
+ * tetel az asztalrol.
+ */
+function toOrderContext(order) {
+  const table = order.tableId ? tableRepository.findById(order.tableId) : null;
+  const items = orderItemRepository.getByOrder(order.id);
+
+  return {
+    id: order.id,
+    restaurantId: order.restaurantId,
+    tableId: order.tableId,
+    tableLabel: table ? table.label : null,
+    type: order.type,
+    status: order.status,
+    allItemsServed: items.length > 0 && items.every(
+      (item) => item.status === ORDER_ITEM_STATUS.SERVED
+    )
   };
 }
 
@@ -276,6 +344,130 @@ async function submitOrder(restaurantId, waiterId, input = {}) {
   return { order: toOrderView(order), addedItems, created };
 }
 
+/* -------------------------------------------------- tetel allapotvaltas */
+
+/** Egy tetel a rendelesevel egyutt, etterem-ellenorzessel. */
+function loadItem(restaurantId, orderItemId) {
+  const item = orderItemRepository.findById(orderItemId);
+  if (!item) throw new NotFoundError('A tétel nem található.');
+
+  const order = orderRepository.findById(item.orderId);
+  if (!order || order.restaurantId !== restaurantId) {
+    throw new NotFoundError('A tétel nem található.');
+  }
+  return { item, order };
+}
+
+/**
+ * Tetel allapotanak atallitasa.
+ *
+ * Ez az altalanos, allapotfuggetlen valtozat - a konyhai felulet (9. szegmens)
+ * ezen keresztul fog `preparing` / `ready` allapotot allitani. A pinceri
+ * felulet nem ezt hivja, hanem a `markItemServed`-et, ami csak kiszolgalast
+ * enged: az elkeszulest a szakacs jelzi, nem a pincer.
+ *
+ * @param {string} restaurantId
+ * @param {string} orderItemId
+ * @param {string} status az ORDER_ITEM_STATUS egyik erteke
+ * @returns {Promise<{ item: object, order: object, changed: boolean }>}
+ */
+async function updateItemStatus(restaurantId, orderItemId, status) {
+  if (!VALID_ITEM_STATUSES.includes(status)) {
+    const validator = createValidator();
+    validator.fail('status', `Ismeretlen állapot: ${status}.`);
+    validator.throwIfInvalid('A tétel állapota hibás.');
+  }
+
+  const { item, order } = loadItem(restaurantId, orderItemId);
+  if (CLOSED_STATUSES.includes(order.status)) {
+    throw new ConflictError('A rendelés már lezárult.', 'order_closed');
+  }
+
+  // Ugyanaz az allapot: nem irunk feleslegesen, es nem kuldunk esemenyt sem.
+  if (item.status === status) {
+    return { item: toItemView(item, order), order: toOrderView(order), changed: false };
+  }
+
+  const updated = await orderItemRepository.updateOrderItemStatus(orderItemId, status);
+  const itemView = toItemView(updated, order);
+  const context = toOrderContext(order);
+
+  if (status === ORDER_ITEM_STATUS.SERVED) {
+    emitOrderItemServed(restaurantId, itemView, context);
+  } else {
+    emitOrderItemStatusChanged(restaurantId, itemView, context);
+  }
+
+  return { item: itemView, order: toOrderView(order), changed: true };
+}
+
+/**
+ * Kiszolgalas jelolese egy tetelen.
+ *
+ * Csak `ready` allapotu tetel jelolheto kiszolgaltnak: amig a konyha nem jelzi
+ * az elkeszulest, nincs mit kivinni. A mar kiszolgalt tetel ujboli jelolese nem
+ * hiba (a gomb ketszeri koppintasa vagy a tomeges jeloles utan is ertelmes
+ * valaszt adunk), csak nem tortenik semmi.
+ *
+ * @returns {Promise<{ item: object, order: object, changed: boolean }>}
+ */
+async function markItemServed(restaurantId, orderItemId) {
+  const { item, order } = loadItem(restaurantId, orderItemId);
+
+  if (item.status === ORDER_ITEM_STATUS.SERVED) {
+    return { item: toItemView(item, order), order: toOrderView(order), changed: false };
+  }
+  if (item.status !== ORDER_ITEM_STATUS.READY) {
+    throw new ConflictError(
+      'Csak elkészült tétel jelölhető kiszolgáltnak.',
+      'item_not_ready',
+      { itemId: item.id, status: item.status }
+    );
+  }
+
+  return updateItemStatus(restaurantId, orderItemId, ORDER_ITEM_STATUS.SERVED);
+}
+
+/**
+ * Egy rendeles osszes `ready` tetelenek kiszolgalasa egy lepesben
+ * ("Mindet kiszolgáltam").
+ *
+ * Tetelenkent kuldi az `order_item:served` esemenyt, hogy a fogado feluletek
+ * (es a 9. szegmens konyhai kepernyoje) egysegesen, tetelenkent kezeljek.
+ *
+ * @returns {Promise<{ order: object, items: object[], count: number }>}
+ */
+async function serveAllReady(restaurantId, orderId) {
+  const order = orderRepository.findById(orderId);
+  if (!order || order.restaurantId !== restaurantId) {
+    throw new NotFoundError('A rendelés nem található.');
+  }
+  if (CLOSED_STATUSES.includes(order.status)) {
+    throw new ConflictError('A rendelés már lezárult.', 'order_closed');
+  }
+
+  const ready = orderItemRepository
+    .getByOrder(orderId)
+    .filter((item) => item.status === ORDER_ITEM_STATUS.READY);
+
+  const served = [];
+  for (const item of ready) {
+    const updated = await orderItemRepository.updateOrderItemStatus(
+      item.id,
+      ORDER_ITEM_STATUS.SERVED
+    );
+    served.push(toItemView(updated, order));
+  }
+
+  // Az esemenyek a mentesek utan mennek ki, hogy a kisero adatban (context)
+  // mar a vegleges allapot legyen benne - kulonben az utolso tetel utan is
+  // allItemsServed: false erkezne.
+  const context = toOrderContext(order);
+  served.forEach((item) => emitOrderItemServed(restaurantId, item, context));
+
+  return { order: toOrderView(order), items: served, count: served.length };
+}
+
 module.exports = {
   MAX_QUANTITY,
   MAX_ITEMS_PER_SUBMIT,
@@ -284,5 +476,10 @@ module.exports = {
   getOrder,
   listOpenOnlineOrders,
   submitOrder,
-  toOrderView
+  updateItemStatus,
+  markItemServed,
+  serveAllReady,
+  toItemView,
+  toOrderView,
+  toOrderContext
 };
