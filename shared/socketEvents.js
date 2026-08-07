@@ -26,6 +26,8 @@
    */
   const SOCKET_EVENTS = {
     ORDER_CREATED: 'order:created',
+    // Meglevo (nyitott) rendeleshez adtak uj teteleket.
+    ORDER_ITEM_ADDED: 'order_item:added',
     ORDER_ITEM_STATUS_CHANGED: 'order_item:status_changed',
     ORDER_ITEM_SERVED: 'order_item:served',
     TABLE_STATUS_CHANGED: 'table:status_changed',

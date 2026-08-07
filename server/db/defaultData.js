@@ -1,7 +1,7 @@
 const { COLLECTIONS } = require('../../shared/constants');
 
 /** A JSON fajl sema verzioja - a migraciok ez alapjan futnak le. */
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 /**
  * Ures adatbazis: minden kollekcio egy-egy tomb a JSON fajlon belul.
@@ -54,6 +54,30 @@ const MIGRATIONS = {
       const mapped = item.allergens.map((allergen) => ALLERGEN_RENAMES[allergen] || allergen);
       if (mapped.some((value, index) => value !== item.allergens[index])) {
         item.allergens = mapped;
+        changed = true;
+      }
+    }
+
+    return changed;
+  },
+
+  /**
+   * 2 -> 3
+   *   - orderItems.waiterId es createdAt: a regi tetelek a rendelestol
+   *     oroklik, hogy a "ki adta le, mikor" nezet ne maradjon uresen.
+   */
+  3(data) {
+    let changed = false;
+    const orderById = new Map((data.orders || []).map((order) => [order.id, order]));
+
+    for (const item of data.orderItems || []) {
+      const order = orderById.get(item.orderId);
+      if (item.waiterId === undefined) {
+        item.waiterId = order ? order.waiterId || null : null;
+        changed = true;
+      }
+      if (item.createdAt === undefined) {
+        item.createdAt = order ? order.createdAt : new Date().toISOString();
         changed = true;
       }
     }

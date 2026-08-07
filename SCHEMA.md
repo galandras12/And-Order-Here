@@ -7,7 +7,7 @@ mezőt.
 
 ```json
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "restaurants": [],
   "users": [],
   "tables": [],
@@ -169,7 +169,13 @@ PIN-nel rendelkező aktív felhasználóin megy végig hash-összehasonlítássa
 | `comment` | string | pl. „csípősen” |
 | `extraIds` | string[] → `extras.id` | kapcsolótábla helyett közvetlen id-tömb |
 | `status` | string | `pending` \| `preparing` \| `ready` \| `served` |
+| `waiterId` | string → `users.id` \| null | ki adta le ezt a tételt |
+| `createdAt` | string (ISO 8601) | mikor adták le |
 | `servedAt` | string (ISO 8601) \| null | `served` állapotnál automatikusan kitöltődik |
+
+A `waiterId` és a `createdAt` tétel szinten is tárolódik, nem csak a
+rendelésen: egy asztalhoz több körben, akár más-más pincér is adhat tételt, és
+a felületen látszania kell, ki mit és mikor adott le.
 
 ### payments
 
@@ -246,6 +252,7 @@ A fájl `schemaVersion` mezője jelzi, melyik séma szerint készült. Indulásk
 | --- | --- |
 | 1 | kiinduló séma |
 | 2 | `vatRate` / `serviceFeeRate` arányról (0.27) százalékra (27); `menuItems.allergens` magyar címkéről kulcsra (`glutén` → `gluten`) |
+| 3 | `orderItems.waiterId` és `createdAt` — a régi tételek a rendeléstől öröklik |
 
 Új migrációhoz: emeld a `SCHEMA_VERSION` értékét, és vedd fel a hozzá tartozó
 függvényt a `MIGRATIONS` objektumba.

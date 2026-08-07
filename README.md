@@ -23,8 +23,8 @@ Technikailag: Node.js + Express + Socket.io, fájlalapú (lowdb/JSON) tárolás,
 JWT-alapú bejelentkezés, natív HTML/CSS/JavaScript kliensek — külső frontend
 keretrendszer nélkül. Eddig a projektváz, az adattárolási réteg, az
 autentikáció, a valós idejű réteg, az admin menükezelés, az asztaltérkép-
-szerkesztő és a pincér élő asztaltérképe készült el; a rendelésfelvétel, a
-konyhai sor és a készletkezelés a következő szegmensekben jön.
+szerkesztő, a pincér élő asztaltérképe és a rendelésfelvétel készült el; a
+konyhai sor, a fizetés és a készletkezelés a következő szegmensekben jön.
 
 ## Indítás
 
@@ -74,6 +74,11 @@ fut (`npm run dev` ugyanez, `node --watch` automatikus újraindítással).
 | `GET /api/waiter/table-states` | csak `waiter` — szerveren számolt állapotok + online összesítő |
 | `POST /api/waiter/reservations` | csak `waiter` — foglalás, `table:reserved` eseménnyel |
 | `GET /api/waiter/tables/:id/reservations` | csak `waiter` |
+| `GET /api/waiter/menu` | csak `waiter` — kategóriák, elérhető tételek, extrák |
+| `GET /api/waiter/tables/:id/order` | csak `waiter` — az asztal nyitott rendelése |
+| `GET /api/waiter/orders/:id` | csak `waiter` |
+| `GET /api/waiter/online-orders` | csak `waiter` |
+| `POST /api/waiter/orders` | csak `waiter` — rendelés leadása / bővítése |
 | `GET /api/kitchen/*` | csak `cook` |
 | `GET /api/admin/restaurant` | csak `admin` — étterem alapadatok |
 | `PUT /api/admin/restaurant` | csak `admin` — alapadatok mentése |
@@ -236,6 +241,7 @@ server/
     floorPlanService.js   asztalok és zónák + törlésvédelem
     floorStateService.js  asztalállapotok és online összesítő (pincér nézet)
     reservationService.js foglalás validációval és ütközés-ellenőrzéssel
+    orderService.js       rendelésfelvétel: étlap, kosár validáció, leadás
   middleware/
     requireAuth.js  JWT ellenőrzés az Authorization fejlécből
     requireRole.js  szerepkör szerinti szűrés
@@ -261,6 +267,7 @@ public/
     index.html  asztaltérkép, menü, foglalás
     floorMap.js Canvas rajzoló (nagyítás, pásztázás, találat-vizsgálat)
     app.js      betöltés, valós idejű frissítés, foglalás
+    order.js    rendelésfelvétel: étlap, kosár, testreszabás, leadás
     waiter.css  pincér-specifikus stílus
   admin/
     index.html  fülek: étterem, kategóriák, tételek, extrák, felhasználók
@@ -306,6 +313,28 @@ képernyőre igazítja. A `table:status_changed`, `table:reserved`, `order:creat
 és `table:layout_changed` eseményekre a nézet magától frissül — oldalfrissítés
 nélkül, kis adatú újralekérdezéssel.
 
+### Rendelésfelvétel
+
+Az asztalra (vagy az online autó ikonra) koppintva a *Rendelés felvétele*
+teljes képernyős, tablet-barát nézetet nyit:
+
+- **kategória-fülek** (Ételek / Italok / Egyéb) és nagy tételkártyák névvel,
+  árral és allergén jelzéssel — csak az `isAvailable: true` tételek,
+- **testreszabó panel** minden tételhez: mennyiség ± gombokkal, szabad szöveges
+  megjegyzés és kiegészítők a saját felárukkal — az ár azonnal frissül,
+- **kosár**, amiben a tételek szerkeszthetők és törölhetők a leadásig,
+- **„Már leadva" lista**: a rendelés meglévő tételei, mindegyiknél **ki adta le
+  és mikor**, az aktuális állapotával (leadva / készül / kész / kiszolgálva).
+
+Leadáskor a szerver **nem nyit párhuzamos rendelést** ugyanahhoz az asztalhoz:
+ha van nyitott rendelés, az új tételek ahhoz kerülnek. Új rendelésnél
+`order:created`, meglévő bővítésénél `order_item:added` esemény megy a pincér-,
+konyhai és admin szobába — erre épül majd a konyhai felület. Minden új tétel
+`pending` állapotban indul.
+
+A kosár a leadásig a böngészőben (`localStorage`) is megmarad: hálózati hiba
+esetén nem vész el, a leadás egy gombnyomással újrapróbálható.
+
 ## Valós idejű réteg (Socket.io)
 
 A Socket.io ugyanarra a `http.Server` példányra csatlakozik, mint az Express —
@@ -340,6 +369,7 @@ onnan olvassa, így nem lehet elgépelni az eseményneveket:
 | Esemény | Célszobák |
 | --- | --- |
 | `order:created` | waiters, kitchen, admin (+ online, ha online rendelés) |
+| `order_item:added` | waiters, kitchen, admin (+ online, ha online rendelés) |
 | `order_item:status_changed` | waiters, kitchen, admin, logistics |
 | `order_item:served` | waiters, kitchen, admin, logistics |
 | `table:status_changed` | waiters, admin |

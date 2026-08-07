@@ -235,6 +235,43 @@
       });
   }
 
+  /* ------------------------------------------------- rendelesfelvetel */
+
+  /**
+   * Rendelesfelvetel megnyitasa a kijelolt asztalhoz, vagy - az auto ikonrol -
+   * a legregebbi meg le nem zart online rendeleshez.
+   */
+  function openOrderView() {
+    closeMenu();
+
+    if (pending.mode === 'online') {
+      api('/api/waiter/online-orders')
+        .then(function (data) {
+          var order = (data.orders || [])[0];
+          if (!order) {
+            toast('Nincs feldolgozásra váró online rendelés.', true);
+            return;
+          }
+          return window.AndOrderOrderView.open({
+            type: 'order',
+            orderId: order.id,
+            label: 'Online rendelés'
+          });
+        })
+        .catch(function (err) {
+          toast(err.message, true);
+        });
+      return;
+    }
+
+    if (!pending.table) return;
+    window.AndOrderOrderView.open({
+      type: 'table',
+      tableId: pending.table.id,
+      label: pending.table.label
+    });
+  }
+
   /* ------------------------------------------------ eger es erintes */
 
   var gesture = null;
@@ -363,14 +400,7 @@
 
     el('[data-menu-close]').addEventListener('click', closeMenu);
     el('[data-menu-reserve]').addEventListener('click', openReserveDialog);
-    el('[data-menu-order]').addEventListener('click', function () {
-      // A rendelesfelvetel a 7. szegmensben keszul el.
-      toast(
-        pending.mode === 'online'
-          ? 'Online rendelések kezelése a következő szegmensben készül el.'
-          : 'Rendelésfelvétel a következő szegmensben készül el (' + pending.table.label + ').'
-      );
-    });
+    el('[data-menu-order]').addEventListener('click', openOrderView);
 
     var form = el('[data-reserve-form]');
     form.addEventListener('submit', submitReservation);
@@ -403,9 +433,13 @@
     });
 
     // Allapotot erinto esemenyek: eleg a kis table-states valaszt ujra kerni.
-    ['table:status_changed', 'table:reserved', 'order:created'].forEach(function (event) {
+    // Ha eppen nyitva van a rendelesfelvetel, az is frissul (mas pincer is
+    // adhatott tetelt ugyanahhoz az asztalhoz).
+    ['table:status_changed', 'table:reserved', 'order:created', 'order_item:added',
+      'order_item:status_changed', 'order_item:served'].forEach(function (event) {
       socket.on(event, function () {
         loadStates();
+        window.AndOrderOrderView.refresh();
       });
     });
 
@@ -426,6 +460,15 @@
     setupControls();
     setupPointer();
     setupSocket();
+
+    window.AndOrderOrderView.setup({
+      api: api,
+      toast: toast,
+      // Leadas utan az asztalterkep allapota is frissul ("rendeles alatt").
+      onSubmitted: function () {
+        loadStates();
+      }
+    });
 
     map.resize();
 

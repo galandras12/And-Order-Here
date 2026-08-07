@@ -473,6 +473,9 @@ body.is-centered {
   right: 16px;
   bottom: 16px;
   z-index: 100;
+  /* Csak allapotjelzo: soha ne nyelje el a mogotte levo gomb erinteset
+     (pl. a rendelesfelvetel "Rendeles leadasa" gombjat). */
+  pointer-events: none;
   display: flex;
   align-items: center;
   gap: 8px;

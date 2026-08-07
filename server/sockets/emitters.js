@@ -69,6 +69,29 @@ function emitOrderCreated(order, items = []) {
 }
 
 /**
+ * Uj tetelek egy mar nyitott rendelesen (a pincer utolag rendelt hozza).
+ *
+ * A pinceri es a konyhai felulet kapja meg - a konyha ebbol tudja, hogy uj
+ * teteleket kell keszitenie. Az admin is megkapja, mert az order:created-et is
+ * megkapja: kulonben a rendelesrol alkotott kepe elavulna.
+ *
+ * @param {object} order a rendeles, amihez a tetelek kerultek
+ * @param {object[]} items az uj tetelek
+ */
+function emitOrderItemsAdded(order, items) {
+  const rooms = [
+    roomName(order.restaurantId, ROOM_KEYS.WAITERS),
+    roomName(order.restaurantId, ROOM_KEYS.KITCHEN),
+    roomName(order.restaurantId, ROOM_KEYS.ADMIN)
+  ];
+  if (order.type === ORDER_TYPE.ONLINE) {
+    rooms.push(roomName(order.restaurantId, ROOM_KEYS.ONLINE));
+  }
+
+  return emitToRooms(rooms, SOCKET_EVENTS.ORDER_ITEM_ADDED, { order, items });
+}
+
+/**
  * Rendelesi tetel allapotvaltasa (pending -> preparing -> ready -> served).
  *
  * @param {string} restaurantId a tetel a rendelesen keresztul tartozik etteremhez
@@ -137,6 +160,7 @@ module.exports = {
   getIo,
   emitToRooms,
   emitOrderCreated,
+  emitOrderItemsAdded,
   emitOrderItemStatusChanged,
   emitOrderItemServed,
   emitTableStatusChanged,

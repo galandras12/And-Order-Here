@@ -130,6 +130,93 @@
     </div>
   </div>
 
+
+  <!-- Rendelésfelvétel -->
+  <div class="order-view" data-order-view hidden>
+    <header class="order-head">
+      <div>
+        <h2 class="order-head__title" data-order-title>Rendelésfelvétel</h2>
+        <p class="order-head__meta" data-order-meta></p>
+      </div>
+      <button type="button" class="btn btn--ghost btn--inline" data-order-close>Vissza a térképhez</button>
+    </header>
+
+    <div class="order-body">
+      <!-- Étlap -->
+      <section class="menu-pane">
+        <div class="menu-tabs" data-menu-tabs></div>
+        <div class="menu-grid" data-menu-grid></div>
+      </section>
+
+      <!-- Kosár -->
+      <aside class="cart-pane">
+        <div class="cart-section" data-existing-section hidden>
+          <h3 class="cart-section__title">Már leadva</h3>
+          <ul class="existing-list" data-existing-list></ul>
+        </div>
+
+        <div class="cart-section" style="border-bottom:none;padding-bottom:0">
+          <h3 class="cart-section__title">Kosár</h3>
+        </div>
+        <ul class="cart-list" data-cart-list>
+          <li class="cart-empty">Válassz tételt az étlapról.</li>
+        </ul>
+
+        <div class="cart-foot">
+          <div class="cart-total">
+            <span>Kosár összesen</span>
+            <span class="cart-total__value" data-cart-total>0 Ft</span>
+          </div>
+          <button type="button" class="btn btn--lg" data-cart-submit disabled>Rendelés leadása</button>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Tétel testreszabása -->
+  <div class="dialog" data-customize-dialog hidden>
+    <div class="dialog__box dialog__box--wide">
+      <p class="customize__item" data-customize-name></p>
+      <p class="customize__price" data-customize-base></p>
+
+      <span class="field__label">Mennyiség</span>
+      <div class="qty">
+        <button type="button" class="qty__btn" data-qty-minus aria-label="Kevesebb">−</button>
+        <span class="qty__value" data-qty-value>1</span>
+        <button type="button" class="qty__btn" data-qty-plus aria-label="Több">+</button>
+      </div>
+
+      <label class="field">
+        <span class="field__label">Megjegyzés</span>
+        <input class="field__input" data-customize-comment placeholder="pl. kevés sóval, allergia">
+      </label>
+
+      <div class="field" data-extras-field>
+        <span class="field__label">Kiegészítők</span>
+        <div class="extras-list" data-extras-list></div>
+      </div>
+
+      <div class="cart-total" style="margin-top:16px">
+        <span>Tétel összesen</span>
+        <span class="cart-total__value" data-customize-total>0 Ft</span>
+      </div>
+
+      <div class="dialog__actions">
+        <button type="button" class="btn" data-customize-confirm>Kosárba</button>
+        <button type="button" class="btn btn--ghost" data-customize-cancel>Mégse</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sikeres leadás -->
+  <div class="order-done" data-order-done hidden>
+    <div class="order-done__box">
+      <div class="order-done__check">✓</div>
+      <p class="order-done__title" data-order-done-title>Rendelés leadva</p>
+      <p class="order-done__note" data-order-done-note></p>
+    </div>
+  </div>
+
   <p class="toast" data-toast hidden></p>
 
   <script src="/socket.io/socket.io.js"></script>
@@ -137,6 +224,7 @@
   <script src="/shared/socketClient.js"></script>
   <script src="/shared/auth.js"></script>
   <script src="/waiter/floorMap.js"></script>
+  <script src="/waiter/order.js"></script>
   <script src="/waiter/app.js"></script>
 </body>
 </html>

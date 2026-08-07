@@ -290,3 +290,459 @@
     gap: 8px;
   }
 }
+
+/* ---------- Rendelésfelvétel ---------- */
+
+.order-view {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.order-view[hidden] {
+  display: none;
+}
+
+.order-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 14px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.order-head__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.order-head__meta {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.order-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 0;
+  min-height: 0;
+}
+
+/* Bal oldal: étlap */
+
+.menu-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--border);
+}
+
+.menu-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 12px 16px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+}
+
+.menu-tab {
+  padding: 12px 20px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.menu-tab.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.menu-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 12px;
+  align-content: start;
+}
+
+.menu-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  min-height: 108px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.menu-card:hover,
+.menu-card:focus-visible {
+  border-color: var(--accent);
+}
+
+.menu-card:active {
+  transform: scale(0.985);
+}
+
+.menu-card__name {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.menu-card__price {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.menu-card__allergens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: auto;
+}
+
+.allergen-tag {
+  padding: 2px 7px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* Jobb oldal: kosár */
+
+.cart-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--surface);
+}
+
+.cart-section {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.cart-section__title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cart-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 16px;
+  margin: 0;
+  list-style: none;
+}
+
+.cart-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 10px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.cart-row__name {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.cart-row__price {
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.cart-row__detail {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.cart-row__actions {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.cart-empty {
+  padding: 18px 0;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.cart-foot {
+  padding: 14px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.cart-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  font-size: 16px;
+}
+
+.cart-total__value {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.btn--lg {
+  width: 100%;
+  padding: 16px 20px;
+  font-size: 16px;
+}
+
+/* Meglévő rendelés tételei */
+
+.existing-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.existing-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.existing-row > div:first-child {
+  min-width: 0;
+}
+
+/* A jobb oldali oszlop (allapot + ar) ne torjon tobb sorba. */
+.existing-row > div:last-child {
+  white-space: nowrap;
+  flex: none;
+}
+
+.existing-row__meta {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.status-pill {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 10px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.status-pill--pending { border-color: #8b8b93; }
+.status-pill--preparing { border-color: #f2b544; color: #f2b544; }
+.status-pill--ready { border-color: #35c46a; color: #35c46a; }
+.status-pill--served { border-color: var(--border); }
+
+/* Testreszabó panel */
+
+.customize__item {
+  margin: 0 0 4px;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.customize__price {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.qty {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.qty__btn {
+  width: 52px;
+  height: 52px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 24px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.qty__btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.qty__value {
+  min-width: 56px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.extras-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.extra-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.extra-option:has(input:checked) {
+  border-color: var(--accent);
+  background: rgba(53, 196, 106, 0.1);
+}
+
+.extra-option input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--accent);
+}
+
+.extra-option__price {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.dialog__box--wide {
+  max-width: 520px;
+}
+
+/* Sikeres leadás visszajelzése */
+
+.order-done {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.order-done[hidden] {
+  display: none;
+}
+
+.order-done__box {
+  padding: 32px 40px;
+  border-radius: var(--radius);
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  text-align: center;
+  animation: order-done-pop 0.22s ease-out;
+}
+
+.order-done__check {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  border: 3px solid var(--accent);
+  color: var(--accent);
+  font-size: 34px;
+  line-height: 58px;
+}
+
+.order-done__title {
+  margin: 0 0 4px;
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.order-done__note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+@keyframes order-done-pop {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .order-done__box { animation: none; }
+}
+
+/* Mobil / kisebb tablet: a kosár a lap aljára kerül */
+
+@media (max-width: 900px) {
+  .order-body {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .menu-pane {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .cart-pane {
+    max-height: 46vh;
+  }
+
+  .menu-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+}

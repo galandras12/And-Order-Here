@@ -2,6 +2,8 @@ const express = require('express');
 
 const floorStateService = require('../../services/floorStateService');
 const reservationService = require('../../services/reservationService');
+const orderService = require('../../services/orderService');
+const { ALLERGENS } = require('../../../shared/constants');
 
 const router = express.Router();
 
@@ -68,6 +70,67 @@ router.post('/reservations', async (req, res, next) => {
       req.body
     );
     res.status(201).json({ reservation });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /api/waiter/menu
+ *
+ * A rendelesfelvetel etlapja: kategoriak, csak elerheto tetelek, extrak es az
+ * allergen katalogus (hogy a felulet egy forrasbol dolgozzon).
+ */
+router.get('/menu', (req, res, next) => {
+  try {
+    res.json({ ...orderService.getMenu(req.user.restaurantId), allergens: ALLERGENS });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /api/waiter/tables/:id/order
+ * Az asztal nyitott rendelese a teteleivel (vagy order: null).
+ */
+router.get('/tables/:id/order', (req, res, next) => {
+  try {
+    res.json(orderService.getOpenOrderForTable(req.user.restaurantId, req.params.id));
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** GET /api/waiter/orders/:id - egy konkret rendeles (pl. online). */
+router.get('/orders/:id', (req, res, next) => {
+  try {
+    res.json({ order: orderService.getOrder(req.user.restaurantId, req.params.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** GET /api/waiter/online-orders - a meg le nem zart online rendelesek. */
+router.get('/online-orders', (req, res, next) => {
+  try {
+    res.json({ orders: orderService.listOpenOnlineOrders(req.user.restaurantId) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * POST /api/waiter/orders
+ * Body: { tableId | orderId, items: [{ menuItemId, quantity, comment, extraIds }] }
+ *
+ * Asztalhoz: ha van nyitott rendeles, ahhoz kerulnek a tetelek, kulonben uj
+ * dine_in rendeles jon letre a bejelentkezett pincerrel. Minden uj tetel
+ * `pending` allapotban indul, es socket esemeny is megy a konyhanak.
+ */
+router.post('/orders', async (req, res, next) => {
+  try {
+    const result = await orderService.submitOrder(req.user.restaurantId, req.user.id, req.body);
+    res.status(result.created ? 201 : 200).json(result);
   } catch (err) {
     next(err);
   }

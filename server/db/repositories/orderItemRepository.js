@@ -6,6 +6,27 @@ const base = createRepository(COLLECTIONS.ORDER_ITEMS);
 const VALID_STATUSES = Object.values(ORDER_ITEM_STATUS);
 
 /**
+ * Egy tetel rekord osszeallitasa.
+ *
+ * A waiterId es a createdAt tetel szinten is tarolodik, nem csak a rendelesen:
+ * egy asztalhoz tobb korben, akar mas-mas pincer is adhat tetelt, es a
+ * feluleten latszania kell, ki mit es mikor adott le.
+ */
+function buildItem(orderId, item, status) {
+  return {
+    orderId,
+    menuItemId: item.menuItemId,
+    quantity: item.quantity ?? 1,
+    comment: item.comment || '',
+    extraIds: item.extraIds || [],
+    status,
+    waiterId: item.waiterId || null,
+    createdAt: item.createdAt || new Date().toISOString(),
+    servedAt: null
+  };
+}
+
+/**
  * Rendelesi tetelek. Az extrakra kapcsolotabla helyett kozvetlen id tomb
  * (extraIds) hivatkozik, mivel JSON tarolasnal nincs SQL join.
  */
@@ -14,7 +35,8 @@ const orderItemRepository = {
 
   /**
    * @param {{ orderId: string, menuItemId: string, quantity?: number,
-   *           comment?: string, extraIds?: string[], status?: string }} input
+   *           comment?: string, extraIds?: string[], status?: string,
+   *           waiterId?: string, createdAt?: string }} input
    */
   async addItem(input) {
     const status = input.status || ORDER_ITEM_STATUS.PENDING;
@@ -22,29 +44,13 @@ const orderItemRepository = {
       throw new Error(`[orderItems] Ismeretlen allapot: ${status}`);
     }
 
-    return base.insert({
-      orderId: input.orderId,
-      menuItemId: input.menuItemId,
-      quantity: input.quantity ?? 1,
-      comment: input.comment || '',
-      extraIds: input.extraIds || [],
-      status,
-      servedAt: null
-    });
+    return base.insert(buildItem(input.orderId, input, status));
   },
 
   /** Tobb tetel felvetele egy mentessel (pl. teljes rendeles rogzitese). */
   async addItems(orderId, items) {
     return base.insertMany(
-      items.map((item) => ({
-        orderId,
-        menuItemId: item.menuItemId,
-        quantity: item.quantity ?? 1,
-        comment: item.comment || '',
-        extraIds: item.extraIds || [],
-        status: item.status || ORDER_ITEM_STATUS.PENDING,
-        servedAt: null
-      }))
+      items.map((item) => buildItem(orderId, item, item.status || ORDER_ITEM_STATUS.PENDING))
     );
   },
 
