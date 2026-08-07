@@ -90,25 +90,8 @@
   /** Nyugta lablec alapertelmezett szovege. */
   const DEFAULT_RECEIPT_FOOTER = '– And-Order-Here –';
 
-  /** Socket.io szobak - feluletenkent egy broadcast csatorna. */
-  const SOCKET_ROOMS = {
-    WAITER: 'room:waiter',
-    ADMIN: 'room:admin',
-    LOGISTICS: 'room:logistics',
-    KITCHEN: 'room:kitchen',
-    ONLINE: 'room:online'
-  };
-
-  /** Socket.io esemenynevek. A kezelok kesobbi fejezetben keszulnek el. */
-  const SOCKET_EVENTS = {
-    CONNECTION: 'connection',
-    DISCONNECT: 'disconnect',
-    JOIN_ROOM: 'room:join',
-    ORDER_CREATED: 'order:created',
-    ORDER_UPDATED: 'order:updated',
-    ORDER_READY: 'order:ready',
-    STOCK_UPDATED: 'stock:updated'
-  };
+  // A Socket.io esemeny- es szobanevek kulon fajlban vannak, hogy egy helyen
+  // legyen a teljes katalogus: shared/socketEvents.js
 
   return {
     INTERFACES,
@@ -119,8 +102,6 @@
     ORDER_ITEM_STATUS,
     PAYMENT_METHOD,
     MENU_CATEGORY_NAMES,
-    DEFAULT_RECEIPT_FOOTER,
-    SOCKET_ROOMS,
-    SOCKET_EVENTS
+    DEFAULT_RECEIPT_FOOTER
   };
 });

@@ -1,13 +1,14 @@
 # And Order Here — étteremkezelő rendszer
 
 Node.js + Express + Socket.io alapú étteremkezelő rendszer, fájlalapú (JSON)
-adattárolással és JWT-alapú bejelentkezéssel. Eddig a projektváz, az adattárolási
-réteg, valamint az autentikáció és a jogosultságkezelés készült el — az üzleti
-funkciók (rendelésfelvétel, konyhai sor, készlet) a következő szegmensekben
-jönnek.
+adattárolással, JWT-alapú bejelentkezéssel és valós idejű szinkronizációval.
+Eddig a projektváz, az adattárolási réteg, az autentikáció és a valós idejű
+kommunikációs réteg készült el — az üzleti funkciók (rendelésfelvétel, konyhai
+sor, készlet) a következő szegmensekben jönnek.
 
-Az egész egyetlen `npm start` paranccsal, egyetlen Node folyamatként fut: nincs
-külön adatbázis-szerver, auth-szerver, session-tároló vagy más háttérszolgáltatás.
+Az egész egyetlen `npm start` paranccsal, egyetlen Node folyamatként és egyetlen
+porton fut (HTTP API + WebSocket együtt): nincs külön adatbázis-szerver,
+auth-szerver, socket-szerver, session-tároló, Redis adapter vagy üzenetsor.
 
 ## Indítás
 
@@ -145,7 +146,9 @@ server/
   middleware/
     requireAuth.js  JWT ellenőrzés az Authorization fejlécből
     requireRole.js  szerepkör szerinti szűrés
-  sockets/      Socket.io inicializálás
+  sockets/
+    index.js      Socket.io init, JWT handshake, szobába sorolás
+    emitters.js   kibocsátó réteg (a route/service ezt hívja)
   db/
     db.js           lowdb példány, in-memory cache, mutexszel védett mentés
     defaultData.js  üres séma + hiányzó kollekciók pótlása
@@ -160,16 +163,87 @@ server/
   index.js      belépési pont
 public/
   waiter/ admin/ logistics/ kitchen/ online/   felületenkénti statikus fájlok
-  shared/auth.js  közös kliens oldali auth (bejelentkezés, token, fetch wrapper)
+  shared/
+    auth.js         bejelentkezés, token tárolás, fetch wrapper
+    socketClient.js Socket.io kapcsolat, újracsatlakozás, állapotjelző
+    eventLog.js     beérkező események megjelenítése a felületen
   assets/     közös CSS
   index.html  felületválasztó
 shared/
-  constants.js  szerver és böngésző által is használt konstansok
+  constants.js      szerver és böngésző által is használt konstansok
+  socketEvents.js   Socket.io esemény- és szobakatalógus
 ```
 
-## Socket.io
+## Valós idejű réteg (Socket.io)
 
-A szerver oldali Socket.io példány elindul és konzolra logolja a kapcsolódást
-és a bontást. Üzleti események (rendelés létrehozás, státuszváltás stb.) a
-`shared/constants.js` `SOCKET_EVENTS` listájában elő vannak készítve, a kezelőik
-egy későbbi fejezetben készülnek el.
+A Socket.io ugyanarra a `http.Server` példányra csatlakozik, mint az Express —
+ugyanaz a folyamat, ugyanaz a port. A böngésző a szervertől kapja a klienst is
+(`/socket.io/socket.io.js`), nincs CDN.
+
+### Belépés a csatornára
+
+A kliens a bejelentkezéskor kapott JWT tokent küldi a handshake-ben
+(`socket.handshake.auth.token`), a szerver az `authService.verifyToken()`-nel
+ellenőrzi. Érvénytelen token esetén a kapcsolat elutasításra kerül. Token nélkül
+csak a publikus online felület csatlakozhat, vendégként.
+
+### Szobák
+
+A kliens a szerepköre alapján automatikusan a megfelelő szobába kerül, és
+kapcsolódás után egy `session:ready` eseményben vissza is kapja, hova:
+
+| Szoba | Ki kerül bele |
+| --- | --- |
+| `restaurant:{id}:waiters` | `waiter` |
+| `restaurant:{id}:kitchen` | `cook` |
+| `restaurant:{id}:admin` | `admin` |
+| `restaurant:{id}:logistics` | `logistics` |
+| `restaurant:{id}:online` | bejelentkezés nélküli vendég |
+
+### Események
+
+A katalógus egy helyen van (`shared/socketEvents.js`), szerver és kliens is
+onnan olvassa, így nem lehet elgépelni az eseményneveket:
+
+| Esemény | Célszobák |
+| --- | --- |
+| `order:created` | waiters, kitchen, admin (+ online, ha online rendelés) |
+| `order_item:status_changed` | waiters, kitchen, admin, logistics |
+| `order_item:served` | waiters, kitchen, admin, logistics |
+| `table:status_changed` | waiters, admin |
+| `table:reserved` | waiters, admin |
+| `menu_item:availability_changed` | mind, az online felülettel együtt |
+
+Kibocsátani mindig a `server/sockets/emitters.js` függvényeivel kell, sosem
+közvetlenül a Socket.io API-val — így egy helyen van, melyik esemény hova megy:
+
+```js
+const { emitOrderCreated } = require('../sockets/emitters');
+emitOrderCreated(order, items);
+```
+
+Kliens oldalon a `public/shared/socketClient.js` csatlakozik a tárolt tokennel,
+kezeli az automatikus újracsatlakozást, és a felület sarkában megjelenít egy
+kapcsolat-állapot jelzőt (zöld: élő kapcsolat, piros: kapcsolat megszakadt).
+A beérkező események a böngésző konzoljába és a felület eseménynaplójába is
+bekerülnek.
+
+### Ideiglenes teszt végpontok
+
+<!-- TODO: remove - a valos ideju reteg kezi ellenorzesehez -->
+
+Csak fejlesztői módban (`NODE_ENV !== 'production'`) élnek, és a végleges
+rendszerből törlendők a `server/routes/api/_test.js` fájllal együtt:
+
+```bash
+# order:created kiváltása (dine_in)
+curl -X POST http://localhost:3000/api/_test/emit-order-created \
+  -H 'Content-Type: application/json' -d '{}'
+
+# bármelyik katalógus-esemény kiváltása
+curl -X POST http://localhost:3000/api/_test/emit \
+  -H 'Content-Type: application/json' -d '{"event":"menu_item:availability_changed"}'
+```
+
+Nyiss meg több felületet külön böngészőablakban, és nézd a konzolt: az esemény
+csak a megfelelő szobák klienseihez jut el.

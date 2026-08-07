@@ -16,8 +16,19 @@
       rendelésfelvétel a következő szegmensekben készül el.
     </p>
     <p class="screen__note" data-api-status style="margin-top:16px"></p>
+
+    <p class="screen__note" style="margin-top:20px">
+      Élő csatorna (bejelentkezés nélkül), szobák: <code data-socket-rooms>—</code>
+    </p>
+    <ul class="event-log" data-event-log style="text-align:left">
+      <li class="event-log__empty">Még nem érkezett esemény.</li>
+    </ul>
   </main>
 
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/shared/socketEvents.js"></script>
+  <script src="/shared/socketClient.js"></script>
+  <script src="/shared/eventLog.js"></script>
   <script>
     // Publikus végpont: token nélkül is válaszol.
     fetch('/api/online/status')
@@ -26,6 +37,9 @@
         document.querySelector('[data-api-status]').textContent = data.message;
       })
       .catch(function () {});
+
+    // Publikus felület: token nélkül, vendégként csatlakozunk az online szobába.
+    AndOrderEventLog.start();
   </script>
 </body>
 </html>

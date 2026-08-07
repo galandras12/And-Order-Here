@@ -77,6 +77,10 @@
     // Admin munkamenet rovidebb: a lap bezarasaval torlodik a token.
     storage: 'session',
     role: 'admin',
-    onLogin: loadUsers
+    onLogin: function () {
+      loadUsers();
+      // Valos ideju csatorna a bejelentkezeskor kapott tokennel.
+      AndOrderEventLog.start({ token: AndOrderAuth.getToken() });
+    }
   });
 })();

@@ -54,10 +54,25 @@
         <h2 class="card__title">API kapcsolat</h2>
         <p class="card__note" data-api-status>Ellenőrzés…</p>
       </section>
+
+      <section class="card">
+        <h2 class="card__title">Valós idejű események</h2>
+        <p class="card__note">
+          A beérkező események a böngésző konzoljában is naplózódnak.
+          Szobák: <code data-socket-rooms>—</code>
+        </p>
+        <ul class="event-log" data-event-log>
+          <li class="event-log__empty">Még nem érkezett esemény.</li>
+        </ul>
+      </section>
     </main>
   </div>
 
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/shared/socketEvents.js"></script>
+  <script src="/shared/socketClient.js"></script>
   <script src="/shared/auth.js"></script>
+  <script src="/shared/eventLog.js"></script>
   <script>
     AndOrderAuth.init({
       interface: 'waiter',
@@ -69,6 +84,8 @@
         AndOrderAuth.request('/api/waiter/status').then(function (data) {
           document.querySelector('[data-api-status]').textContent = data.message;
         });
+        // Valós idejű csatorna a bejelentkezéskor kapott tokennel.
+        AndOrderEventLog.start({ token: AndOrderAuth.getToken() });
       }
     });
   </script>

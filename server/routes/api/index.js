@@ -1,5 +1,6 @@
 const express = require('express');
 
+const { config } = require('../../config');
 const { requireAuth, requireRole } = require('../../middleware');
 const { ROLES } = require('../../../shared/constants');
 
@@ -32,6 +33,13 @@ router.use('/waiter', requireAuth, requireRole([ROLES.WAITER]), waiterRouter);
 router.use('/kitchen', requireAuth, requireRole([ROLES.COOK]), kitchenRouter);
 router.use('/admin', requireAuth, requireRole([ROLES.ADMIN]), adminRouter);
 router.use('/logistics', requireAuth, requireRole([ROLES.LOGISTICS]), logisticsRouter);
+
+// TODO: remove - ideiglenes teszt vegpontok a valos ideju reteg ellenorzesehez.
+// Csak fejlesztoi modban elerheto, eles kornyezetben fel sem kerul.
+if (config.env !== 'production') {
+  router.use('/_test', require('./_test'));
+  console.log('[api] Teszt vegpontok bekapcsolva: POST /api/_test/emit-order-created, /api/_test/emit');
+}
 
 // Ismeretlen API utvonal: JSON valasz (nem a HTML 404).
 router.use((req, res) => {
