@@ -29,13 +29,19 @@ class NotFoundError extends Error {
   }
 }
 
-/** Az elem letezik, de a muvelet uzleti szabaly miatt nem vegezheto el. */
+/**
+ * Az elem letezik, de a muvelet uzleti szabaly miatt nem vegezheto el.
+ *
+ * A details-be kerulo adatot az API valasz is tartalmazza - igy a felulet
+ * beszedes megerosito kerdest tud feltenni (pl. hany nyitott rendeles van).
+ */
 class ConflictError extends Error {
-  constructor(message, code = 'conflict') {
+  constructor(message, code = 'conflict', details = null) {
     super(message);
     this.name = 'ConflictError';
     this.status = 409;
     this.code = code;
+    if (details) this.details = details;
   }
 }
 

@@ -301,6 +301,9 @@ select.field__input {
   bottom: 24px;
   transform: translateX(-50%);
   z-index: 200;
+  /* Csak visszajelzes: soha ne nyelje el a mogotte levo elem kattintasat
+     (az asztalterkep szerkeszto fogantyui is a kepernyo aljara eshetnek). */
+  pointer-events: none;
   max-width: min(520px, calc(100vw - 32px));
   padding: 12px 20px;
   border-radius: var(--radius);

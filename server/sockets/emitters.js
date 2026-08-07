@@ -94,6 +94,23 @@ function emitTableStatusChanged(restaurantId, table) {
   return emitToRooms(rooms, SOCKET_EVENTS.TABLE_STATUS_CHANGED, { table });
 }
 
+/**
+ * Az asztalterkep elrendezese valtozott: az admin hozzaadott, athelyezett,
+ * atmeretezett, elforgatott vagy torolt egy asztalt/zonat.
+ *
+ * A pincer felulet eppen nyitva levo asztalterkepe ebbol tud frissulni.
+ *
+ * @param {string} restaurantId
+ * @param {{ change: string, table?: object, zone?: object, id?: string }} payload
+ */
+function emitTableLayoutChanged(restaurantId, payload) {
+  const rooms = [
+    roomName(restaurantId, ROOM_KEYS.WAITERS),
+    roomName(restaurantId, ROOM_KEYS.ADMIN)
+  ];
+  return emitToRooms(rooms, SOCKET_EVENTS.TABLE_LAYOUT_CHANGED, payload);
+}
+
 /** Uj asztalfoglalas. */
 function emitTableReserved(restaurantId, reservation) {
   const rooms = [
@@ -123,6 +140,7 @@ module.exports = {
   emitOrderItemStatusChanged,
   emitOrderItemServed,
   emitTableStatusChanged,
+  emitTableLayoutChanged,
   emitTableReserved,
   emitMenuItemAvailabilityChanged
 };

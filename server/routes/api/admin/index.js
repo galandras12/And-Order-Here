@@ -4,6 +4,8 @@ const restaurantRouter = require('./restaurant');
 const menuCategoriesRouter = require('./menuCategories');
 const menuItemsRouter = require('./menuItems');
 const extrasRouter = require('./extras');
+const tablesRouter = require('./tables');
+const zonesRouter = require('./zones');
 const usersRouter = require('./users');
 
 const router = express.Router();
@@ -26,6 +28,8 @@ router.use('/restaurant', restaurantRouter);
 router.use('/menu-categories', menuCategoriesRouter);
 router.use('/menu-items', menuItemsRouter);
 router.use('/extras', extrasRouter);
+router.use('/tables', tablesRouter);
+router.use('/zones', zonesRouter);
 router.use('/users', usersRouter);
 
 module.exports = router;

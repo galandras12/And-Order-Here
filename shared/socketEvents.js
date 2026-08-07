@@ -30,6 +30,8 @@
     ORDER_ITEM_SERVED: 'order_item:served',
     TABLE_STATUS_CHANGED: 'table:status_changed',
     TABLE_RESERVED: 'table:reserved',
+    // Az asztalterkep elrendezese valtozott (admin atrendezte a termet).
+    TABLE_LAYOUT_CHANGED: 'table:layout_changed',
     MENU_ITEM_AVAILABILITY_CHANGED: 'menu_item:availability_changed'
   };
 

@@ -3,8 +3,9 @@
 Node.js + Express + Socket.io alapú étteremkezelő rendszer, fájlalapú (JSON)
 adattárolással, JWT-alapú bejelentkezéssel és valós idejű szinkronizációval.
 Eddig a projektváz, az adattárolási réteg, az autentikáció, a valós idejű
-kommunikációs réteg és az admin menükezelés készült el — a további funkciók
-(rendelésfelvétel, konyhai sor, készlet) a következő szegmensekben jönnek.
+kommunikációs réteg, az admin menükezelés és az asztaltérkép-szerkesztő készült
+el — a további funkciók (rendelésfelvétel, konyhai sor, készlet) a következő
+szegmensekben jönnek.
 
 Az egész egyetlen `npm start` paranccsal, egyetlen Node folyamatként és egyetlen
 porton fut (HTTP API + WebSocket együtt): nincs külön adatbázis-szerver,
@@ -65,6 +66,10 @@ fut (`npm run dev` ugyanez, `node --watch` automatikus újraindítással).
 | `PATCH /api/admin/menu-items/:id/availability` | csak `admin` — socket eseményt is küld |
 | `GET/POST /api/admin/extras` | csak `admin` |
 | `PUT/DELETE /api/admin/extras/:id` | csak `admin` |
+| `GET/POST /api/admin/tables` | csak `admin` — asztalok |
+| `PUT/DELETE /api/admin/tables/:id` | csak `admin` (`?force=true` a megerősített törléshez) |
+| `GET/POST /api/admin/zones` | csak `admin` — zónák |
+| `PUT/DELETE /api/admin/zones/:id` | csak `admin` |
 | `GET /api/admin/users` | csak `admin` |
 | `GET /api/logistics/*` | csak `logistics` |
 | `GET /api/online/*` | publikus |
@@ -95,7 +100,7 @@ jelszó-ellenőrzés, a token-kezelés és a middleware változatlan marad.
 
 ## Admin felület
 
-A `/admin` öt fülre bomlik:
+A `/admin` hat fülre bomlik:
 
 | Fül | Mit tud |
 | --- | --- |
@@ -103,6 +108,7 @@ A `/admin` öt fülre bomlik:
 | Kategóriák | hozzáadás, átnevezés, sorrend fel/le, törlés (csak üres kategória) |
 | Menütételek | kategóriánként csoportosítva; név, ár, kategória, allergének (14 EU-s allergén checkboxként), elérhető/elfogyott kapcsoló; hozzáadás, szerkesztés, törlés |
 | Extrák | kiegészítők hozzáadása, szerkesztése, törlése |
+| Asztaltérkép | vizuális szerkesztő: asztalok mozgatása, méretezése, forgatása, zónák kijelölése |
 | Felhasználók | lista (szerkesztés későbbi szegmensben) + valós idejű eseménynapló |
 
 Az elérhetőség kapcsoló váltása `menu_item:availability_changed` socket eseményt
@@ -113,6 +119,34 @@ változik az elérhetőség.
 Rétegzés: a route-ok vékonyak, minden üzleti szabály és validáció a
 `server/services/restaurantService.js` és `menuService.js` fájlokban van, amik
 kizárólag a repository interfészen keresztül érnek adatot.
+
+### Asztaltérkép szerkesztő
+
+Rácsos vászon, amin az asztalok egérrel és érintéssel (tableten is) mozgathatók,
+a sarkukkal méretezhetők, a felső fogantyúval forgathatók; a címke és a komment
+az oldalsó panelen szerkeszthető. Minden művelet a lezárásakor (`pointerup`)
+mentődik a szerverre, nem minden pixelnyi mozgásnál. Nyílbillentyűkkel
+finomhangolható a pozíció, `Delete` töröl, `Escape` megszünteti a kijelölést.
+A rácsra illesztés (10 px, forgatásnál 15°) `Shift` lenyomásával kikapcsolható.
+
+A „Zóna kijelölés” móddal a vászonra húzva jelölhető ki egy terület — ide kerül
+majd az online rendelések autó ikonja. A zónák félig átlátszó, szaggatott
+körvonalú területként jelennek meg, jól elkülönülve az asztaloktól.
+
+Megvalósítás: **DOM + CSS transform**, nem Canvas — az indoklás a
+`public/admin/floorPlan.js` fejlécében olvasható (találat-vizsgálat, szöveges
+címkék, fogantyúk, billentyűzet-elérhetőség mind ingyen jön a DOM-mal, és pár
+tucat asztalnál a canvas rajzolási előnye nem számít). A zónák tetszőleges
+sokszögek lehetnek, ezért azok egy SVG rétegen jelennek meg az asztalok alatt.
+Külső drag-and-drop könyvtár nincs: az egeret és az érintést közös Pointer
+Events kezeli.
+
+Minden asztal- és zónaváltozás `table:layout_changed` socket eseményt küld a
+pincér és az admin szobába, hogy a nyitva lévő asztaltérkép frissülhessen.
+
+Asztal törlésekor, ha van hozzá nyitott rendelés vagy jövőbeli foglalás, a
+szerver `409`-cel válaszol a részletekkel; a felület ebből kérdez rá, és
+megerősítés után `?force=true`-val törli (a foglalások is vele mennek).
 
 **ÁFA és szervizdíj százalékban tárolódik** (27 = 27%), 0 és 100 közötti érték
 lehet. Régebbi, arányként (0.27) tárolt adatot a séma-migráció induláskor
@@ -180,6 +214,7 @@ server/
     authService.js        bejelentkezés, token kiadás és ellenőrzés
     restaurantService.js  étterem alapadatok + validáció
     menuService.js        kategóriák, étlap tételek, extrák + üzleti szabályok
+    floorPlanService.js   asztalok és zónák + törlésvédelem
   middleware/
     requireAuth.js  JWT ellenőrzés az Authorization fejlécből
     requireRole.js  szerepkör szerinti szűrés
@@ -205,7 +240,8 @@ public/
     index.html  fülek: étterem, kategóriák, tételek, extrák, felhasználók
     app.js      közös mag: fülek, API hívás, űrlap- és hibakezelés
     restaurant.js  menu.js  extras.js  users.js   nézetenkénti modulok
-    admin.css   admin-specifikus stílus
+    floorPlan.js   vizuális asztaltérkép szerkesztő
+    admin.css  floor-plan.css   admin-specifikus stílus
   shared/
     auth.js         bejelentkezés, token tárolás, fetch wrapper
     socketClient.js Socket.io kapcsolat, újracsatlakozás, állapotjelző
@@ -256,6 +292,7 @@ onnan olvassa, így nem lehet elgépelni az eseményneveket:
 | `table:status_changed` | waiters, admin |
 | `table:reserved` | waiters, admin |
 | `menu_item:availability_changed` | mind, az online felülettel együtt |
+| `table:layout_changed` | waiters, admin — az admin átrendezte a termet |
 
 Kibocsátani mindig a `server/sockets/emitters.js` függvényeivel kell, sosem
 közvetlenül a Socket.io API-val — így egy helyen van, melyik esemény hova megy:

@@ -62,7 +62,8 @@ router.use((err, req, res, next) => {
   res.status(err.status).json({
     error: err.code,
     message: err.message,
-    ...(err.fields && err.fields.length ? { fields: err.fields } : {})
+    ...(err.fields && err.fields.length ? { fields: err.fields } : {}),
+    ...(err.details ? { details: err.details } : {})
   });
 });
 

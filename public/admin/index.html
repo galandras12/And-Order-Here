@@ -6,6 +6,7 @@
   <title>Admin felület</title>
   <link rel="stylesheet" href="/assets/base.css">
   <link rel="stylesheet" href="/admin/admin.css">
+  <link rel="stylesheet" href="/admin/floor-plan.css">
 </head>
 <body>
   <!-- Bejelentkezés: email + jelszó -->
@@ -50,6 +51,7 @@
       <button type="button" class="admin-nav__tab" data-tab="categories">Kategóriák</button>
       <button type="button" class="admin-nav__tab" data-tab="items">Menütételek</button>
       <button type="button" class="admin-nav__tab" data-tab="extras">Extrák</button>
+      <button type="button" class="admin-nav__tab" data-tab="floor">Asztaltérkép</button>
       <button type="button" class="admin-nav__tab" data-tab="users">Felhasználók</button>
     </nav>
 
@@ -263,6 +265,125 @@
         </div>
       </section>
 
+
+      <!-- E) Asztaltérkép szerkesztő -->
+      <section class="admin-panel" data-panel="floor" hidden>
+        <div class="card">
+          <div class="floor-toolbar">
+            <button class="btn btn--inline" type="button" data-floor-add-table>+ Új asztal</button>
+            <button class="btn btn--ghost btn--inline" type="button" data-floor-zone-mode>Zóna kijelölés</button>
+            <span class="floor-toolbar__spacer"></span>
+            <span class="floor-toolbar__hint" data-floor-hint>
+              Húzd az asztalt a mozgatáshoz, a sarkát a méretezéshez, a felső fogantyút a forgatáshoz.
+              Rácsra illesztés: Shift lenyomva kikapcsol.
+            </span>
+          </div>
+        </div>
+
+        <div class="floor-layout">
+          <div>
+            <div class="card" style="padding:14px">
+              <div class="floor-canvas-wrap">
+                <div class="floor-canvas" data-floor-canvas>
+                  <svg class="floor-zones" data-floor-zones xmlns="http://www.w3.org/2000/svg"></svg>
+                </div>
+              </div>
+              <div class="floor-legend">
+                <span class="floor-legend__item">
+                  <span class="floor-legend__swatch floor-legend__swatch--table"></span> asztal
+                </span>
+                <span class="floor-legend__item">
+                  <span class="floor-legend__swatch floor-legend__swatch--zone"></span> zóna (online rendelések területe)
+                </span>
+                <span class="floor-legend__item" data-floor-counts></span>
+              </div>
+            </div>
+          </div>
+
+          <aside class="floor-side">
+            <div class="card floor-empty" data-floor-empty>
+              <h2 class="card__title">Kijelölés</h2>
+              <p class="card__note">
+                Kattints egy asztalra vagy zónára a szerkesztéshez. Új asztalt a fenti gombbal
+                tudsz felvenni, zónát a „Zóna kijelölés” móddal, a vászonra húzva.
+              </p>
+            </div>
+
+            <!-- Asztal tulajdonságai -->
+            <div class="card floor-props" data-floor-table-props hidden>
+              <h2 class="card__title">Asztal</h2>
+              <form data-floor-table-form novalidate style="margin-top:14px">
+                <label class="field" data-field="label">
+                  <span class="field__label">Megnevezés *</span>
+                  <input class="field__input field__input--sm" name="label" required>
+                  <span class="field__error"></span>
+                </label>
+                <label class="field" data-field="comment">
+                  <span class="field__label">Komment</span>
+                  <input class="field__input field__input--sm" name="comment" placeholder="pl. ablak melletti">
+                  <span class="field__error"></span>
+                </label>
+
+                <div class="floor-props__row">
+                  <label class="field" data-field="posX">
+                    <span class="field__label">X</span>
+                    <input class="field__input field__input--sm" name="posX" type="number" step="10">
+                    <span class="field__error"></span>
+                  </label>
+                  <label class="field" data-field="posY">
+                    <span class="field__label">Y</span>
+                    <input class="field__input field__input--sm" name="posY" type="number" step="10">
+                    <span class="field__error"></span>
+                  </label>
+                </div>
+
+                <div class="floor-props__row">
+                  <label class="field" data-field="width">
+                    <span class="field__label">Szélesség</span>
+                    <input class="field__input field__input--sm" name="width" type="number" step="10">
+                    <span class="field__error"></span>
+                  </label>
+                  <label class="field" data-field="height">
+                    <span class="field__label">Magasság</span>
+                    <input class="field__input field__input--sm" name="height" type="number" step="10">
+                    <span class="field__error"></span>
+                  </label>
+                </div>
+
+                <label class="field" data-field="rotation">
+                  <span class="field__label">Elforgatás (fok)</span>
+                  <input class="field__input field__input--sm" name="rotation" type="number" min="0" max="360" step="15">
+                  <span class="field__error"></span>
+                </label>
+
+                <div class="form-actions">
+                  <button class="btn btn--inline" type="submit">Mentés</button>
+                  <button class="btn btn--danger btn--inline" type="button" data-floor-table-delete>Törlés</button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Zóna tulajdonságai -->
+            <div class="card floor-props" data-floor-zone-props hidden>
+              <h2 class="card__title">Zóna</h2>
+              <p class="card__note">Az online rendelések autó ikonja ezen a területen fog megjelenni.</p>
+              <form data-floor-zone-form novalidate style="margin-top:14px">
+                <label class="field" data-field="label">
+                  <span class="field__label">Megnevezés *</span>
+                  <input class="field__input field__input--sm" name="label" required>
+                  <span class="field__error"></span>
+                </label>
+                <p class="card__note" data-floor-zone-points></p>
+                <div class="form-actions">
+                  <button class="btn btn--inline" type="submit">Mentés</button>
+                  <button class="btn btn--danger btn--inline" type="button" data-floor-zone-delete>Törlés</button>
+                </div>
+              </form>
+            </div>
+          </aside>
+        </div>
+      </section>
+
       <!-- Felhasználók + valós idejű napló -->
       <section class="admin-panel" data-panel="users" hidden>
         <div class="card">
@@ -313,6 +434,7 @@
   <script src="/admin/restaurant.js"></script>
   <script src="/admin/menu.js"></script>
   <script src="/admin/extras.js"></script>
+  <script src="/admin/floorPlan.js"></script>
   <script src="/admin/users.js"></script>
 </body>
 </html>
