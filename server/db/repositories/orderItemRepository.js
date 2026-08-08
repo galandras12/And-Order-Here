@@ -22,6 +22,8 @@ function buildItem(orderId, item, status) {
     status,
     waiterId: item.waiterId || null,
     createdAt: item.createdAt || new Date().toISOString(),
+    // Mikor kezdett keszulni - ebbol latszik a konyhan, mennyi ideje fo.
+    preparingStartedAt: null,
     servedAt: null
   };
 }
@@ -72,7 +74,12 @@ const orderItemRepository = {
   },
 
   /**
-   * Tetel allapotanak modositasa. `served` eseten a servedAt automatikusan kitoltodik.
+   * Tetel allapotanak modositasa.
+   *
+   * Az idobelyegeket az allapot vezerli, hogy ne lehessenek ellentmondasban a
+   * statusszal: `served`-nel a servedAt, `preparing`-nel a preparingStartedAt
+   * toltodik ki, visszalepesnel (pending) pedig kiurul.
+   *
    * @returns {Promise<object|null>}
    */
   async updateOrderItemStatus(orderItemId, status) {
@@ -80,8 +87,17 @@ const orderItemRepository = {
       throw new Error(`[orderItems] Ismeretlen allapot: ${status} (${VALID_STATUSES.join(', ')})`);
     }
 
+    const now = new Date().toISOString();
     const patch = { status };
-    patch.servedAt = status === ORDER_ITEM_STATUS.SERVED ? new Date().toISOString() : null;
+    patch.servedAt = status === ORDER_ITEM_STATUS.SERVED ? now : null;
+
+    if (status === ORDER_ITEM_STATUS.PREPARING) {
+      patch.preparingStartedAt = now;
+    } else if (status === ORDER_ITEM_STATUS.PENDING) {
+      // Visszatettek a sorba: a korabbi keszitesi ido mar nem ervenyes.
+      patch.preparingStartedAt = null;
+    }
+
     return base.update(orderItemId, patch);
   },
 

@@ -11,7 +11,10 @@ const {
   trimmed,
   toNumber
 } = require('../utils/validation');
-const { ALLERGEN_KEYS } = require('../../shared/constants');
+const { ALLERGEN_KEYS, MENU_CATEGORY_KIND } = require('../../shared/constants');
+
+/** Valaszthato kategoria tipusok - a konyhai sort a `food` tolti fel. */
+const CATEGORY_KINDS = Object.values(MENU_CATEGORY_KIND);
 
 /**
  * Menukezeles: kategoriak, etlap tetelek es extrak.
@@ -40,6 +43,9 @@ function getCategory(restaurantId, categoryId) {
 function validateCategory(input, { restaurantId, ignoreId = null }) {
   const validator = createValidator();
   validator.requiredString('name', input.name, { max: 80 });
+  if (input.kind !== undefined && input.kind !== null && input.kind !== '') {
+    validator.oneOf('kind', input.kind, CATEGORY_KINDS);
+  }
   validator.numberInRange('sortOrder', input.sortOrder, {
     min: 0,
     max: 999,
@@ -69,6 +75,7 @@ async function createCategory(restaurantId, input = {}) {
   return menuCategoryRepository.createCategory({
     restaurantId,
     name,
+    kind: input.kind || undefined,
     sortOrder:
       input.sortOrder === undefined || input.sortOrder === null || input.sortOrder === ''
         ? undefined
@@ -82,6 +89,7 @@ async function updateCategory(restaurantId, categoryId, input = {}) {
   const name = validateCategory(input, { restaurantId, ignoreId: categoryId });
 
   const patch = { name };
+  if (input.kind) patch.kind = input.kind;
   if (input.sortOrder !== undefined && input.sortOrder !== null && input.sortOrder !== '') {
     patch.sortOrder = toNumber(input.sortOrder);
   }

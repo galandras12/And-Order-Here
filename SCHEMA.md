@@ -7,7 +7,7 @@ mezőt.
 
 ```json
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "restaurants": [],
   "users": [],
   "tables": [],
@@ -110,8 +110,15 @@ PIN-nel rendelkező aktív felhasználóin megy végig hash-összehasonlítássa
 | --- | --- | --- |
 | `id` | string | `mcat_…` |
 | `restaurantId` | string → `restaurants.id` | |
-| `name` | string | `Etelek` \| `Italok` \| `Egyeb` |
+| `name` | string | szabadon átnevezhető (alap: `Etelek` \| `Italok` \| `Egyeb`) |
+| `kind` | string | `food` \| `drink` \| `other` — a konyhai munkapult ez alapján szűr |
 | `sortOrder` | number | megjelenítési sorrend |
+
+A `kind` szándékosan külön mező, nem a névből számolt érték: a konyhai sor így
+akkor is helyes marad, ha a kategóriát átnevezik, és egy új étel-kategória
+(például „Levesek") is magától a szakácshoz kerül. Új kategória alapértelmezett
+típusa `food` — a konyhai sorból kimaradni rosszabb, mint egy felesleges tételt
+látni ott.
 
 ### menuItems
 
@@ -171,6 +178,7 @@ PIN-nel rendelkező aktív felhasználóin megy végig hash-összehasonlítássa
 | `status` | string | `pending` \| `preparing` \| `ready` \| `served` |
 | `waiterId` | string → `users.id` \| null | ki adta le ezt a tételt |
 | `createdAt` | string (ISO 8601) | mikor adták le |
+| `preparingStartedAt` | string (ISO 8601) \| null | `preparing` állapotnál kitöltődik, `pending`-re visszalépéskor kiürül |
 | `servedAt` | string (ISO 8601) \| null | `served` állapotnál automatikusan kitöltődik |
 
 A `waiterId` és a `createdAt` tétel szinten is tárolódik, nem csak a
@@ -178,9 +186,13 @@ rendelésen: egy asztalhoz több körben, akár más-más pincér is adhat téte
 a felületen látszania kell, ki mit és mikor adott le.
 
 A `status` a konyhai folyamat állapota: a tétel `pending` állapotban jön létre,
-a konyha állítja `preparing`, majd `ready` értékre, a pincér pedig `served`
-állapotba jelöli, amikor kivitte. `served` állapotnál a `servedAt` automatikusan
-kitöltődik, más állapotra váltáskor kiürül.
+a konyha állítja `preparing`, majd `ready` értékre
+(`PATCH /api/kitchen/order-items/:id/status`), a pincér pedig `served` állapotba
+jelöli, amikor kivitte. Az időbélyegeket az állapot vezérli, hogy ne
+kerülhessenek ellentmondásba a statusszal: `served`-nél a `servedAt`,
+`preparing`-nél a `preparingStartedAt` töltődik ki, `pending`-re visszalépéskor
+pedig kiürül. A `preparingStartedAt` adja a konyhai „5 perce készül" jelzést, és
+ez lesz a későbbi időtúllépés-riasztás alapja is.
 
 „Minden tétel kiszolgálva" nincs külön mezőben tárolva: a rendelés
 `allItemsServed` értékét a service réteg a tételek állapotából számolja
@@ -263,6 +275,7 @@ A fájl `schemaVersion` mezője jelzi, melyik séma szerint készült. Indulásk
 | 1 | kiinduló séma |
 | 2 | `vatRate` / `serviceFeeRate` arányról (0.27) százalékra (27); `menuItems.allergens` magyar címkéről kulcsra (`glutén` → `gluten`) |
 | 3 | `orderItems.waiterId` és `createdAt` — a régi tételek a rendeléstől öröklik |
+| 4 | `menuCategories.kind` (a meglévő kategóriák a nevükből kapják meg: `Ételek` → `food`, `Italok` → `drink`, egyéb → `other`); `orderItems.preparingStartedAt` |
 
 Új migrációhoz: emeld a `SCHEMA_VERSION` értékét, és vedd fel a hozzá tartozó
 függvényt a `MIGRATIONS` objektumba.

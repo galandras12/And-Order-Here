@@ -1,7 +1,7 @@
-const { COLLECTIONS } = require('../../shared/constants');
+const { COLLECTIONS, MENU_CATEGORY_KIND } = require('../../shared/constants');
 
 /** A JSON fajl sema verzioja - a migraciok ez alapjan futnak le. */
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 /**
  * Ures adatbazis: minden kollekcio egy-egy tomb a JSON fajlon belul.
@@ -83,8 +83,47 @@ const MIGRATIONS = {
     }
 
     return changed;
+  },
+
+  /**
+   * 3 -> 4
+   *   - menuCategories.kind: a konyhai munkapult ez alapjan szuri az eteleket
+   *     (a meglevo kategoriak a nevukbol kapjak meg a tipust),
+   *   - orderItems.preparingStartedAt: mikor kezdett keszulni a tetel.
+   */
+  4(data) {
+    let changed = false;
+
+    for (const category of data.menuCategories || []) {
+      if (category.kind !== undefined) continue;
+      category.kind = kindFromName(category.name);
+      changed = true;
+    }
+
+    for (const item of data.orderItems || []) {
+      if (item.preparingStartedAt !== undefined) continue;
+      item.preparingStartedAt = null;
+      changed = true;
+    }
+
+    return changed;
   }
 };
+
+/**
+ * Kategoria tipusa a nevebol - csak a migraciohoz, hogy a regi adat ne
+ * maradjon tipus nelkul. Az ekezetek es a kis/nagybetuk nem szamitanak.
+ */
+function kindFromName(name) {
+  const normalized = String(name || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '');
+
+  if (normalized.startsWith('etel')) return MENU_CATEGORY_KIND.FOOD;
+  if (normalized.startsWith('ital')) return MENU_CATEGORY_KIND.DRINK;
+  return MENU_CATEGORY_KIND.OTHER;
+}
 
 /**
  * Meglevo fajl igazitasa az aktualis semahoz:

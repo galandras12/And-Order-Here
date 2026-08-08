@@ -3,8 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Konyhai felület</title>
+  <title>Konyhai munkapult</title>
   <link rel="stylesheet" href="/assets/base.css">
+  <link rel="stylesheet" href="/kitchen/kitchen.css">
 </head>
 <body>
   <!-- Bejelentkezés: PIN-kódos gyorsbelépés -->
@@ -31,7 +32,7 @@
   <div data-auth-app hidden>
     <header class="topbar">
       <div class="topbar__brand">
-        <h1 class="topbar__title">Konyhai felület</h1>
+        <h1 class="topbar__title">Konyhai munkapult</h1>
         <span class="topbar__badge">cook</span>
       </div>
       <div class="topbar__user">
@@ -40,54 +41,33 @@
       </div>
     </header>
 
-    <main class="app-main">
-      <section class="card">
-        <h2 class="card__title">Konyhai rendelési sor — hamarosan</h2>
-        <p class="card__note">
-          A belépés és a jogosultságkezelés készen van: innentől a
-          <code>/api/kitchen/*</code> végpontok csak szakács szerepkörrel érhetők el.
-          A funkciók a következő szegmensben készülnek el.
-        </p>
-      </section>
+    <main class="board-main">
+      <div class="board-bar">
+        <div class="board-counts">
+          <span class="count count--pending"><b data-count-pending>0</b> leadva</span>
+          <span class="count count--preparing"><b data-count-preparing>0</b> készül</span>
+          <span class="count count--ready"><b data-count-ready>0</b> elkészült</span>
+        </div>
+        <span class="board-bar__spacer"></span>
+        <button type="button" class="btn btn--ghost" data-sort-toggle>Legrégebbi elöl</button>
+        <button type="button" class="btn btn--ghost" data-board-refresh>Frissítés</button>
+      </div>
 
-      <section class="card">
-        <h2 class="card__title">API kapcsolat</h2>
-        <p class="card__note" data-api-status>Ellenőrzés…</p>
-      </section>
+      <p class="board-empty" data-board-empty hidden>
+        Nincs elkészítendő étel. Az új rendelések maguktól megjelennek itt.
+      </p>
 
-      <section class="card">
-        <h2 class="card__title">Valós idejű események</h2>
-        <p class="card__note">
-          A beérkező események a böngésző konzoljában is naplózódnak.
-          Szobák: <code data-socket-rooms>—</code>
-        </p>
-        <ul class="event-log" data-event-log>
-          <li class="event-log__empty">Még nem érkezett esemény.</li>
-        </ul>
-      </section>
+      <div class="board" data-board></div>
     </main>
   </div>
 
+  <p class="toast" data-toast hidden></p>
+
   <script src="/socket.io/socket.io.js"></script>
+  <script src="/shared/constants.js"></script>
   <script src="/shared/socketEvents.js"></script>
   <script src="/shared/socketClient.js"></script>
   <script src="/shared/auth.js"></script>
-  <script src="/shared/eventLog.js"></script>
-  <script>
-    AndOrderAuth.init({
-      interface: 'kitchen',
-      mode: 'pin',
-      // Tableten hosszabb élettartamú munkamenet.
-      storage: 'local',
-      role: 'cook',
-      onLogin: function () {
-        AndOrderAuth.request('/api/kitchen/status').then(function (data) {
-          document.querySelector('[data-api-status]').textContent = data.message;
-        });
-        // Valós idejű csatorna a bejelentkezéskor kapott tokennel.
-        AndOrderEventLog.start({ token: AndOrderAuth.getToken() });
-      }
-    });
-  </script>
+  <script src="/kitchen/app.js"></script>
 </body>
 </html>

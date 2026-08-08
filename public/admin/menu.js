@@ -10,6 +10,9 @@
 
   var app = window.AdminApp;
 
+  /** Kategoria tipusok a kozos konstansokbol (a konyhai sort a food tolti fel). */
+  var CATEGORY_KINDS = window.APP_CONSTANTS.MENU_CATEGORY_KINDS;
+
   var state = {
     categories: [],
     items: [],
@@ -33,7 +36,7 @@
   function renderCategories() {
     var body = document.querySelector('[data-categories-body]');
     if (!state.categories.length) {
-      app.messageRow(body, 4, 'Még nincs kategória. Adj hozzá egyet fent.');
+      app.messageRow(body, 5, 'Még nincs kategória. Adj hozzá egyet fent.');
       return;
     }
 
@@ -44,6 +47,7 @@
 
       row.appendChild(app.cell(String(index + 1)));
       row.appendChild(app.cell(category.name));
+      row.appendChild(kindCell(category));
       row.appendChild(app.cell(String(count), 'col-num'));
       row.appendChild(
         app.actionsCell([
@@ -61,6 +65,44 @@
     });
   }
 
+  /**
+   * A kategoria tipusa helyben allithato: ez donti el, hogy a tetelei
+   * megjelennek-e a konyhai munkapulton.
+   */
+  function kindCell(category) {
+    var td = document.createElement('td');
+    var select = document.createElement('select');
+    select.className = 'field__input field__input--inline';
+    select.dataset.categoryKind = category.id;
+
+    CATEGORY_KINDS.forEach(function (kind) {
+      var option = document.createElement('option');
+      option.value = kind.key;
+      option.textContent = kind.label;
+      option.selected = category.kind === kind.key;
+      select.appendChild(option);
+    });
+
+    select.addEventListener('change', function () {
+      app
+        .api('/api/admin/menu-categories/' + category.id, {
+          method: 'PUT',
+          body: { name: category.name, kind: select.value }
+        })
+        .then(function () {
+          app.toast('Kategória típusa mentve.');
+          return reload();
+        })
+        .catch(function (err) {
+          app.toast(err.message, true);
+          select.value = category.kind;
+        });
+    });
+
+    td.appendChild(select);
+    return td;
+  }
+
   function addCategory(event) {
     event.preventDefault();
     var element = categoryForm();
@@ -70,7 +112,10 @@
       .submit(
         element,
         function () {
-          return app.api('/api/admin/menu-categories', { method: 'POST', body: { name: values.name } });
+          return app.api('/api/admin/menu-categories', {
+            method: 'POST',
+            body: { name: values.name, kind: values.kind }
+          });
         },
         'Kategória hozzáadva.'
       )

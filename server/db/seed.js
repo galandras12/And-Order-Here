@@ -4,6 +4,7 @@ const { hashPassword, hashPin } = require('../utils/password');
 const {
   ROLES,
   MENU_CATEGORY_NAMES,
+  MENU_CATEGORY_KIND,
   DEFAULT_RECEIPT_FOOTER
 } = require('../../shared/constants');
 
@@ -82,6 +83,13 @@ const MENU = {
   ]
 };
 
+/** Melyik alapertelmezett kategoria kerul a konyhai sorba. */
+const CATEGORY_KINDS = {
+  [MENU_CATEGORY_NAMES.FOOD]: MENU_CATEGORY_KIND.FOOD,
+  [MENU_CATEGORY_NAMES.DRINK]: MENU_CATEGORY_KIND.DRINK,
+  [MENU_CATEGORY_NAMES.OTHER]: MENU_CATEGORY_KIND.OTHER
+};
+
 const EXTRAS = [
   { name: 'Extra sajt', price: 450 },
   { name: 'Extra koret', price: 890 },
@@ -133,7 +141,8 @@ async function seed(options = {}) {
     const category = await menuCategoryRepository.createCategory({
       restaurantId: restaurant.id,
       name: categoryName,
-      sortOrder: sortOrder++
+      sortOrder: sortOrder++,
+      kind: CATEGORY_KINDS[categoryName]
     });
 
     for (const item of items) {

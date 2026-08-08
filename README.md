@@ -23,8 +23,9 @@ Technikailag: Node.js + Express + Socket.io, fájlalapú (lowdb/JSON) tárolás,
 JWT-alapú bejelentkezés, natív HTML/CSS/JavaScript kliensek — külső frontend
 keretrendszer nélkül. Eddig a projektváz, az adattárolási réteg, az
 autentikáció, a valós idejű réteg, az admin menükezelés, az asztaltérkép-
-szerkesztő, a pincér élő asztaltérképe és a rendelésfelvétel készült el; a
-konyhai sor, a fizetés és a készletkezelés a következő szegmensekben jön.
+szerkesztő, a pincér élő asztaltérképe, a rendelésfelvétel, az élő
+státuszkövetés és a konyhai munkapult készült el; a fizetés, a nyomtatás és a
+készletkezelés a következő szegmensekben jön.
 
 ## Indítás
 
@@ -81,7 +82,9 @@ fut (`npm run dev` ugyanez, `node --watch` automatikus újraindítással).
 | `POST /api/waiter/orders` | csak `waiter` — rendelés leadása / bővítése |
 | `PATCH /api/waiter/order-items/:id/served` | csak `waiter` — kiszolgálás jelölése (csak `ready` tételre) |
 | `PATCH /api/waiter/orders/:id/serve-all-ready` | csak `waiter` — „Mindet kiszolgáltam" |
-| `GET /api/kitchen/*` | csak `cook` |
+| `GET /api/kitchen/orders` | csak `cook` — a munkapult (asztalonkénti blokkok, csak ételek) |
+| `PATCH /api/kitchen/order-items/:id/status` | csak `cook` — leadva → készül → elkészült |
+| `PATCH /api/kitchen/orders/:id/items-status` | csak `cook` — egy blokk tételei egyszerre |
 | `GET /api/admin/restaurant` | csak `admin` — étterem alapadatok |
 | `PUT /api/admin/restaurant` | csak `admin` — alapadatok mentése |
 | `GET/POST /api/admin/menu-categories` | csak `admin` |
@@ -131,7 +134,7 @@ A `/admin` hat fülre bomlik:
 | Fül | Mit tud |
 | --- | --- |
 | Étterem beállításai | név, cím, telefon, ÁFA %, szervizdíj %, AP kód, nyugta lábléc — mezőnkénti hibajelzéssel |
-| Kategóriák | hozzáadás, átnevezés, sorrend fel/le, törlés (csak üres kategória) |
+| Kategóriák | hozzáadás, átnevezés, típus (étel / ital / egyéb), sorrend fel/le, törlés (csak üres kategória) |
 | Menütételek | kategóriánként csoportosítva; név, ár, kategória, allergének (14 EU-s allergén checkboxként), elérhető/elfogyott kapcsoló; hozzáadás, szerkesztés, törlés |
 | Extrák | kiegészítők hozzáadása, szerkesztése, törlése |
 | Asztaltérkép | vizuális szerkesztő: asztalok mozgatása, méretezése, forgatása, zónák kijelölése |
@@ -264,7 +267,11 @@ server/
   config.js     .env alapú konfiguráció
   index.js      belépési pont
 public/
-  logistics/ kitchen/ online/   felületenkénti statikus fájlok
+  logistics/ online/   felületenkénti statikus fájlok
+  kitchen/
+    index.html  konyhai munkapult (blokkok, léptető gombok)
+    app.js      betöltés, valós idejű frissülés, állapotléptetés
+    kitchen.css sárga-fekete, nagy elemes konyhai stílus
   waiter/
     index.html  asztaltérkép, menü, foglalás
     floorMap.js Canvas rajzoló (nagyítás, pásztázás, találat-vizsgálat)
@@ -377,6 +384,48 @@ válik. Ezt a szerver számolja (`allItemsServed` mező a rendelés válaszában
 asztal állapotában), nem a kliens találgatja a listából. A tényleges nyomtatás a
 10. szegmensben készül el, addig a gomb placeholder üzenetet ad.
 
+## Konyhai munkapult
+
+A `/kitchen` felület a szakács munkapultja: kártyarácsban mutatja a még
+elkészítendő ételeket, blokkonként (egy asztal = egy kártya).
+
+**Csak ételek.** A munkapultra kizárólag azoknak a tételeknek kell kikerülniük,
+amelyek étel kategóriába tartoznak — az italokkal és az egyéb tételekkel a
+konyhán nincs teendő. A szűrés a kategória `kind` mezőjén megy (`food` / `drink`
+/ `other`), **nem a kategória nevén**: így egy átnevezés vagy egy új
+étel-kategória (például „Levesek") nem hagyja ki az ételeket a konyhai sorból. A
+típus az admin felület Kategóriák fülén állítható, új kategória alapértelmezetten
+étel.
+
+**A blokk felépítése**: felül a jelölés és a rendelés kora, alatta soronként a
+tétel neve és mennyisége (`Hamburger ×2`), a kiegészítők `+` jellel, majd a blokk
+alján a vendégkommentek — soronként, idézőjelben. Az állapotot szín és ikon is
+jelöli: leadva semleges szürke (óra), készül sárga (fazék), elkészült zöld
+(csengő), kiszolgálva elhalványítva (pipa).
+
+**Az online rendelés ugyanolyan blokk, mint bármelyik asztalé**: a szakács
+szemszögéből nincs jelentősége, hogy honnan jött. A válaszban nincs `type` mező,
+és a felirat is ugyanolyan formátumú rövid kód (`R-01`, naponta újrainduló
+sorszámmal), mint az asztaljelölés — semmi nem utal az online eredetre.
+
+**Állapotléptetés**: tételenként egy nagy gomb (*Indítás*, majd *Kész*), illetve
+blokk szinten *Mind indítása* / *Mind elkészült*. A tömeges léptetés csak előre
+lép: a már elkészült tétel nem esik vissza a tűzhelyre. Minden váltás
+`order_item:status_changed` eseményt küld, amit a pincér felület már fogad —
+ezzel a konyha → pincér lánc élesben zárul: az „elkészült” jelzés azonnal
+megjelenik a pincér asztaltérképén.
+
+**Élő frissülés**: új rendelés (`order:created`) és új tétel (`order_item:added`)
+magától megjelenik a munkapulton, a kiszolgált tétel (`order_item:served`)
+elhalványodik, majd az utolsó tétel kiszolgálásával a blokk elfogy a nézetből.
+
+**Időbélyeg**: `preparing` állapotba lépéskor rögzül a tétel
+`preparingStartedAt` mezője, a felület pedig diszkréten kiírja („5 perce
+készül"). Erre épül majd a 16. szegmens időtúllépés-riasztása.
+
+A felület tablet és fali monitor méretre is optimalizált: kártyarács, nagy
+betűk, legalább 48 px magas gombok — párás, mozgás közbeni pillantásra tervezve.
+
 ## Valós idejű réteg (Socket.io)
 
 A Socket.io ugyanarra a `http.Server` példányra csatlakozik, mint az Express —
@@ -454,12 +503,6 @@ curl -X POST http://localhost:3000/api/_test/emit-order-created \
 # bármelyik katalógus-esemény kiváltása
 curl -X POST http://localhost:3000/api/_test/emit \
   -H 'Content-Type: application/json' -d '{"event":"menu_item:availability_changed"}'
-
-# valódi tétel állapotának átállítása (amíg a konyhai felület nincs kész):
-# ezzel próbálható ki a pincér felület élő státuszkövetése
-curl -X POST http://localhost:3000/api/_test/set-item-status \
-  -H 'Content-Type: application/json' \
-  -d '{"orderItemId":"item_...","status":"ready"}'
 ```
 
 Nyiss meg több felületet külön böngészőablakban, és nézd a konzolt: az esemény

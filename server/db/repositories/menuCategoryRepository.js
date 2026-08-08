@@ -1,5 +1,5 @@
 const { createRepository } = require('./baseRepository');
-const { COLLECTIONS } = require('../../../shared/constants');
+const { COLLECTIONS, MENU_CATEGORY_KIND } = require('../../../shared/constants');
 
 const base = createRepository(COLLECTIONS.MENU_CATEGORIES);
 
@@ -8,7 +8,8 @@ const menuCategoryRepository = {
   ...base,
 
   /**
-   * @param {{ restaurantId: string, name: string, sortOrder?: number }} input
+   * @param {{ restaurantId: string, name: string, sortOrder?: number,
+   *           kind?: string }} input
    */
   async createCategory(input) {
     // A lista vegere: a legnagyobb meglevo sortOrder + 1. (A darabszam nem jo:
@@ -22,8 +23,18 @@ const menuCategoryRepository = {
     return base.insert({
       restaurantId: input.restaurantId,
       name: input.name,
-      sortOrder: input.sortOrder ?? nextSortOrder
+      sortOrder: input.sortOrder ?? nextSortOrder,
+      // Alapertelmezes az etel: a konyhai sorbol kimaradni rosszabb, mint egy
+      // felesleges tetelt latni ott.
+      kind: input.kind || MENU_CATEGORY_KIND.FOOD
     });
+  },
+
+  /** Egy etterem adott tipusu kategoriai (pl. a konyhai sorhoz az etelek). */
+  getByKind(restaurantId, kind) {
+    return menuCategoryRepository
+      .getByRestaurant(restaurantId)
+      .filter((category) => category.kind === kind);
   },
 
   /** Egy etterem kategoriai, sortOrder szerint rendezve. */

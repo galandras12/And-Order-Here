@@ -100,6 +100,24 @@
   };
 
   /**
+   * Kategoria tipusa. A konyhai munkapult ez alapjan szuri a teteleket -
+   * nem a kategoria nevere, hogy egy atnevezes vagy egy uj etel-kategoria
+   * (pl. "Levesek") ne hagyja ki az eteleket a konyhai sorbol.
+   */
+  const MENU_CATEGORY_KIND = {
+    FOOD: 'food',
+    DRINK: 'drink',
+    OTHER: 'other'
+  };
+
+  /** Valaszthato kategoria tipusok a feluleten. */
+  const MENU_CATEGORY_KINDS = [
+    { key: MENU_CATEGORY_KIND.FOOD, label: 'Étel (a konyhára kerül)' },
+    { key: MENU_CATEGORY_KIND.DRINK, label: 'Ital' },
+    { key: MENU_CATEGORY_KIND.OTHER, label: 'Egyéb' }
+  ];
+
+  /**
    * Az EU altal kotelezoen jelolendo 14 allergen. Az etlap tetelek allergens
    * mezoje ezekbol a kulcsokbol all; a felulet a label-t jeleniti meg.
    */
@@ -139,6 +157,8 @@
     TABLE_STATE,
     PAYMENT_METHOD,
     MENU_CATEGORY_NAMES,
+    MENU_CATEGORY_KIND,
+    MENU_CATEGORY_KINDS,
     ALLERGENS,
     ALLERGEN_KEYS,
     DEFAULT_RECEIPT_FOOTER

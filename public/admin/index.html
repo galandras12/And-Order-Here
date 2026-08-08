@@ -132,6 +132,15 @@
                 <input class="field__input" name="name" required>
                 <span class="field__error"></span>
               </label>
+              <label class="field" data-field="kind">
+                <span class="field__label">Típus</span>
+                <select class="field__input" name="kind">
+                  <option value="food" selected>Étel (a konyhára kerül)</option>
+                  <option value="drink">Ital</option>
+                  <option value="other">Egyéb</option>
+                </select>
+                <span class="field__error"></span>
+              </label>
               <div class="field" style="align-self:end">
                 <button class="btn btn--inline" type="submit">Hozzáadás</button>
               </div>
@@ -141,19 +150,23 @@
 
         <div class="card">
           <h2 class="card__title">Kategóriák</h2>
-          <p class="card__note">A sorrend a pincér és az online étlapon is ebben a sorrendben jelenik meg.</p>
+          <p class="card__note">
+            A sorrend a pincér és az online étlapon is ebben a sorrendben jelenik meg.
+            Az <strong>étel</strong> típusú kategóriák tételei jelennek meg a konyhai munkapulton.
+          </p>
           <div class="table-wrap">
             <table class="data-table">
               <thead>
                 <tr>
                   <th>Sorrend</th>
                   <th>Név</th>
+                  <th>Típus</th>
                   <th class="col-num">Tételek</th>
                   <th class="col-actions">Műveletek</th>
                 </tr>
               </thead>
               <tbody data-categories-body>
-                <tr><td colspan="4">Betöltés…</td></tr>
+                <tr><td colspan="5">Betöltés…</td></tr>
               </tbody>
             </table>
           </div>
@@ -425,6 +438,7 @@
   <p class="toast" data-toast hidden></p>
 
   <script src="/socket.io/socket.io.js"></script>
+  <script src="/shared/constants.js"></script>
   <script src="/shared/socketEvents.js"></script>
   <script src="/shared/socketClient.js"></script>
   <script src="/shared/auth.js"></script>
