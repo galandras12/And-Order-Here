@@ -7,7 +7,7 @@ mezőt.
 
 ```json
 {
-  "schemaVersion": 6,
+  "schemaVersion": 7,
   "restaurants": [],
   "users": [],
   "tables": [],
@@ -165,6 +165,7 @@ látni ott.
 | `status` | string | `new` → `accepted` → `in_preparation` → `ready` → `served` → `bill_requested` → `paid`, illetve `cancelled` |
 | `guestName` | string \| null | online rendelésnél a vendég neve, egyébként `null` |
 | `receiptNumber` | string | hatjegyű azonosító a vendégblokkon |
+| `paymentStatus` | string | `unpaid` \| `paid` — a befizetések és a végösszeg viszonya |
 | `createdAt` | string (ISO 8601) | felvétel ideje |
 
 A `receiptNumber` a rendelés létrehozásakor születik, és nem változik: így az
@@ -204,6 +205,11 @@ ez lesz a későbbi időtúllépés-riasztás alapja is.
 `allItemsServed` értékét a service réteg a tételek állapotából számolja
 (`orderService.toOrderView`, `orderItemRepository.isOrderFullyServed`), így nem
 lehet a tárolt adattal ellentmondásba kerülni.
+
+A `paymentStatus` **szándékosan külön** a `status` életciklustól: egy online
+rendelést a vendég már a leadáskor kifizethet, miközben a konyhának még dolga van
+vele. A rendelés akkor zárul le (`status: paid`), ha kifizették **és** minden
+tételét kiszolgálták.
 
 ### payments
 
@@ -284,6 +290,7 @@ A fájl `schemaVersion` mezője jelzi, melyik séma szerint készült. Indulásk
 | 4 | `menuCategories.kind` (a meglévő kategóriák a nevükből kapják meg: `Ételek` → `food`, `Italok` → `drink`, egyéb → `other`); `orderItems.preparingStartedAt` |
 | 5 | `orders.receiptNumber` — a régi rendelések is kapnak egyedi hatjegyű azonosítót, hogy a blokkjuk nyomtatható legyen |
 | 6 | `orders.guestName` — az online vendégfelülethez; a korábbi rendeléseknél `null` |
+| 7 | `orders.paymentStatus` — a fizetettségi állapot; a korábbi rendelések a már rögzített fizetéseik alapján kapják meg |
 
 Új migrációhoz: emeld a `SCHEMA_VERSION` értékét, és vedd fel a hozzá tartozó
 függvényt a `MIGRATIONS` objektumba.

@@ -1,6 +1,11 @@
 const { createRepository } = require('./baseRepository');
 const orderItemRepository = require('./orderItemRepository');
-const { COLLECTIONS, ORDER_TYPE, ORDER_STATUS } = require('../../../shared/constants');
+const {
+  COLLECTIONS,
+  ORDER_TYPE,
+  ORDER_STATUS,
+  PAYMENT_STATUS
+} = require('../../../shared/constants');
 
 const base = createRepository(COLLECTIONS.ORDERS);
 
@@ -68,6 +73,8 @@ const orderRepository = {
       // Online rendelesnel a vendeg neve - ebbol tudja a pincer, kihez tartozik.
       guestName: input.guestName || null,
       status,
+      // Fizetettsegi allapot - szandekosan kulon a status eletciklustol.
+      paymentStatus: PAYMENT_STATUS.UNPAID,
       // A blokk azonositoja mar itt eldol, hogy nyomtataskor ne valtozzon.
       receiptNumber: input.receiptNumber || generateReceiptNumber(),
       createdAt: input.createdAt || new Date().toISOString()

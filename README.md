@@ -24,8 +24,9 @@ JWT-alapú bejelentkezés, natív HTML/CSS/JavaScript kliensek — külső front
 keretrendszer nélkül. Eddig a projektváz, az adattárolási réteg, az
 autentikáció, a valós idejű réteg, az admin menükezelés, az asztaltérkép-
 szerkesztő, a pincér élő asztaltérképe, a rendelésfelvétel, az élő
-státuszkövetés, a konyhai munkapult, a blokknyomtatás és az online vendégfelület
-készült el; a fizetés és a készletkezelés a következő szegmensekben jön.
+státuszkövetés, a konyhai munkapult, a blokknyomtatás, az online vendégfelület
+és a fizetési folyamat készült el; a logisztika és a készletkezelés a következő
+szegmensekben jön.
 
 ## Indítás
 
@@ -106,6 +107,8 @@ fut (`npm run dev` ugyanez, `node --watch` automatikus újraindítással).
 | `GET /api/online/menu` | publikus — kategóriák és csak elérhető tételek |
 | `GET /api/online/extras` | publikus — kiegészítők |
 | `POST /api/online/orders` | publikus — vendég rendelés (`guestName` + kosár) |
+| `GET /api/orders/:id/payments` | pincér/admin, vagy vendég **online** rendelésre — fizetési állapot |
+| `POST /api/orders/:id/payments` | ugyanaz — fizetés rögzítése |
 
 Hitelesítés: `Authorization: Bearer <token>` fejléc. Token nélkül `401`,
 rossz szerepkörrel `403` a válasz.
@@ -521,6 +524,65 @@ rajzolás előtt érvényre jut, hogy ne villanjon fel a másik téma. Az
 korlátozott (5 percenként 12 rendelés), hogy egy kliens ne tudja elárasztani a
 konyhát.
 
+## Fizetés
+
+A fizetés **rendelés szintű**, mindkét oldalról ugyanaz a végpont:
+`POST /api/orders/:id/payments`. Ezért nem a `/api/waiter` vagy `/api/online` alá
+került — a pincér (bejelentkezve) és a vendég (az online pénztárból,
+bejelentkezés nélkül) is ezt hívja, így a fizetés egy helyen, egyfajta szabály
+szerint rögzül.
+
+**Nincs valódi fizetési szolgáltató bekötve.** A kártyás / SZÉP kártyás /
+kuponos fizetés itt annyit jelent, hogy rögzítjük a **fizetés módját és
+összegét** — a tényleges tranzakció a helyszínen, kártyaterminálon történik. A
+hely elő van készítve: egy későbbi szegmensben a `paymentService.recordPayment`
+elé kerülhet a szolgáltató (SimplePay, Barion, Stripe) hívása, és csak a sikeres
+tranzakció után kell menteni a rekordot.
+
+**Adatmodell.** A `payments` kollekció rekordjai (`orderId`, `method`, `amount`,
+`paidAt`). Egy rendeléshez **több fizetés is tartozhat** — részben kártya,
+részben készpénz —, ezért az összegeket mindig összegezve nézzük. A rendelés
+`paymentStatus` mezője akkor vált `paid`-re, ha a befizetések elérik a
+végösszeget (ÁFÁ-val és szervizdíjjal együtt, ugyanabból a számításból, amiből a
+blokk készül). Az összeg elhagyható a kérésben — alapértelmezésben a teljes
+hátralék —, de megadható kevesebb (részfizetés) és több is (a borravaló későbbi
+kezeléséhez).
+
+**A fizetettség külön a rendelés életciklusától.** A `paymentStatus` nem
+ugyanaz, mint az `order.status`: egy online rendelést a vendég már a leadáskor
+kifizethet, miközben a konyhának még dolga van vele. A rendelés akkor zárul le
+(`status: paid`, az asztal felszabadul, a nyitottak közül kikerül), ha
+**kifizették és minden tételét kiszolgálták** — ezt a `closeIfSettled` figyeli,
+és a fizetés, illetve az utolsó kiszolgálás egyaránt kiválthatja.
+
+**Jogosultság.** Bejelentkezett pincér és admin a saját étterme bármelyik
+rendelését fizettetheti. Bejelentkezés nélkül **kizárólag online rendelés**
+érhető el, és csak a rendelés azonosítójának ismeretében — az azonosító nanoid
+(kitalálhatatlan), és a vendég a saját leadása után kapja meg, vagyis maga az id
+a belépő. A publikus írás IP-nként korlátozott.
+
+### Pincér oldal
+
+A rendelés-áttekintőben jelvény mutatja a fizetettséget (*Fizetésre vár · összeg*
+vagy *Kifizetve · összeg · mód*), mellette a **Fizetés rögzítése** gomb. A
+választó nagy, egyértelmű gombokkal kínálja az öt módot (bankkártya, SZÉP kártya,
+kupon, készpénz, utólagos ATM), az összeg pedig előre kitöltve, de átírható.
+
+**Nyomtatás előtti emlékeztető**: ha a rendelés még nincs kifizetve, a
+*Nyomtatás* gomb először figyelmeztet — de nem tilt: onnan lehet fizetést
+rögzíteni, vagy „Nyomtatás mindenképp" gombbal továbbmenni. Életszerű, hogy néha
+fordított a sorrend.
+
+### Online pénztár
+
+A *Tovább a fizetéshez* gomb a **Pénztár** nézetet nyitja: a rendelés
+összegzése, a szerverről kért végösszeg (részösszeg + ÁFA + szervizdíj), és a
+fizetési módok — bankkártya, SZÉP kártya, kupon, valamint egy egyértelműen
+jelölt **„Fizetés a helyszínen (készpénz vagy ATM)"** opció. Kártyás/SZÉP/kupon
+választásnál a felület jelzi, hogy **szimulált** visszaigazolásról van szó.
+Sikeres rögzítés után a vendég visszaigazolást lát: rendelés azonosító, fizetett
+összeg és fizetési mód.
+
 ## Valós idejű réteg (Socket.io)
 
 A Socket.io ugyanarra a `http.Server` példányra csatlakozik, mint az Express —
@@ -556,6 +618,7 @@ onnan olvassa, így nem lehet elgépelni az eseményneveket:
 | --- | --- |
 | `order:created` | waiters, kitchen, admin (+ online, ha online rendelés) |
 | `order_item:added` | waiters, kitchen, admin (+ online, ha online rendelés) |
+| `order:payment_recorded` | waiters, admin, logistics — fizetés rögzült |
 | `order_item:status_changed` | waiters, kitchen, admin, logistics |
 | `order_item:served` | waiters, kitchen, admin, logistics |
 | `table:status_changed` | waiters, admin |

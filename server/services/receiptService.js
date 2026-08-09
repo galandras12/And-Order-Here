@@ -84,6 +84,36 @@ function toReceiptItem(item) {
 }
 
 /**
+ * A rendeles osszesitese: tetelek, reszosszeg, AFA, szervizdij, vegosszeg.
+ *
+ * Szandekosan **nem** vizsgalja, hogy minden tetel kiszolgalt-e: a fizetes
+ * (12. szegmens) mar a kiszolgalas elott is rogzitheto - egy online rendelest a
+ * vendeg rogton a leadaskor kifizet. A blokk nyomtatasa (`getReceipt`) ellenben
+ * megkoveteli a kiszolgalast.
+ *
+ * @returns {{ order: object, restaurant: object, storedItems: object[],
+ *             items: object[], totals: object }}
+ */
+function getOrderTotals(restaurantId, orderId) {
+  const order = orderRepository.findById(orderId);
+  if (!order || order.restaurantId !== restaurantId) {
+    throw new NotFoundError('A rendelés nem található.');
+  }
+
+  const restaurant = restaurantRepository.findById(restaurantId);
+  if (!restaurant) throw new NotFoundError('Az étterem adatai nem találhatók.');
+
+  const storedItems = orderItemRepository
+    .getByOrder(order.id)
+    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+  const items = storedItems.map(toReceiptItem);
+  const subtotal = items.reduce((total, item) => total + item.itemTotal, 0);
+
+  return { order, restaurant, storedItems, items, totals: calculateTotals(subtotal, restaurant) };
+}
+
+/**
  * A blokk adatcsomagja.
  *
  * @param {string} restaurantId
@@ -93,32 +123,20 @@ function toReceiptItem(item) {
  * @throws {ConflictError} ha meg van ki nem szolgalt tetel
  */
 function getReceipt(restaurantId, orderId, issuedAt = new Date()) {
-  const order = orderRepository.findById(orderId);
-  if (!order || order.restaurantId !== restaurantId) {
-    throw new NotFoundError('A rendelés nem található.');
-  }
-
-  const restaurant = restaurantRepository.findById(restaurantId);
-  if (!restaurant) throw new NotFoundError('Az étterem adatai nem találhatók.');
-
-  const items = orderItemRepository.getByOrder(order.id);
+  const { order, restaurant, storedItems, items: receiptItems, totals } =
+    getOrderTotals(restaurantId, orderId);
 
   // A blokk csak lezart asztalrol keszulhet: amig keszul vagy kint van etel,
   // a vegosszeg meg valtozhat.
-  const pending = items.filter((item) => item.status !== ORDER_ITEM_STATUS.SERVED);
-  if (!items.length || pending.length) {
+  const pending = storedItems.filter((item) => item.status !== ORDER_ITEM_STATUS.SERVED);
+  if (!storedItems.length || pending.length) {
     throw new ConflictError(
       'A blokk csak akkor nyomtatható, ha a rendelés minden tétele kiszolgálásra került.',
       'order_not_served',
-      { itemCount: items.length, notServedCount: pending.length }
+      { itemCount: storedItems.length, notServedCount: pending.length }
     );
   }
 
-  const receiptItems = items
-    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
-    .map(toReceiptItem);
-
-  const subtotal = receiptItems.reduce((total, item) => total + item.itemTotal, 0);
   const table = order.tableId ? tableRepository.findById(order.tableId) : null;
   const waiter = order.waiterId ? userRepository.findById(order.waiterId) : null;
 
@@ -140,9 +158,9 @@ function getReceipt(restaurantId, orderId, issuedAt = new Date()) {
       createdAt: order.createdAt
     },
     items: receiptItems,
-    totals: calculateTotals(subtotal, restaurant),
+    totals,
     issuedAt: issuedAt.toISOString()
   };
 }
 
-module.exports = { getReceipt, calculateTotals };
+module.exports = { getReceipt, getOrderTotals, calculateTotals };

@@ -151,17 +151,58 @@
         Kollégáink hamarosan elkezdik elkészíteni rendelésed.
       </p>
 
-      <!-- A fizetési folyamat a 12. szegmensben készül el. -->
       <button type="button" class="btn btn--primary btn--block" data-pay>Tovább a fizetéshez</button>
-      <div class="pay-placeholder" data-pay-placeholder hidden>
-        <p class="pay-placeholder__title">Fizetés — hamarosan</p>
-        <p class="pay-placeholder__note">
-          A fizetés (kártya, SZÉP-kártya, utalvány, készpénz, utólagos rendezés) a
-          következő fejlesztési szakaszban készül el. Addig a helyszínen tudsz fizetni.
+      <button type="button" class="btn btn--ghost btn--block" data-confirm-close>Új rendelés</button>
+    </div>
+  </div>
+
+  <!-- Pénztár -->
+  <div class="confirm" data-checkout hidden>
+    <div class="confirm__box">
+      <h2 class="confirm__title">Pénztár</h2>
+      <p class="confirm__id">Rendelés azonosító: <strong data-checkout-number></strong></p>
+
+      <ul class="confirm__items" data-checkout-items></ul>
+
+      <div class="checkout-totals">
+        <p class="checkout-row"><span>Részösszeg</span><span data-checkout-subtotal></span></p>
+        <p class="checkout-row" data-checkout-vat-row hidden>
+          <span data-checkout-vat-label>ÁFA</span><span data-checkout-vat></span>
+        </p>
+        <p class="checkout-row" data-checkout-service-row hidden>
+          <span data-checkout-service-label>Szervizdíj</span><span data-checkout-service></span>
         </p>
       </div>
 
-      <button type="button" class="btn btn--ghost btn--block" data-confirm-close>Új rendelés</button>
+      <div class="sum-row sum-row--big">
+        <span>Fizetendő</span>
+        <span class="sum-row__value" data-checkout-total>0 Ft</span>
+      </div>
+
+      <div class="pay-methods" data-checkout-methods></div>
+
+      <p class="pay-note" data-checkout-note hidden></p>
+
+      <button type="button" class="btn btn--primary btn--block" data-checkout-submit disabled>Fizetés</button>
+      <button type="button" class="btn btn--ghost btn--block" data-checkout-back>Vissza</button>
+    </div>
+  </div>
+
+  <!-- Fizetési visszaigazolás -->
+  <div class="confirm" data-paid hidden>
+    <div class="confirm__box">
+      <div class="confirm__check" aria-hidden="true">✓</div>
+      <h2 class="confirm__title">Fizetés rögzítve — köszönjük!</h2>
+      <p class="confirm__id">Rendelés azonosító: <strong data-paid-number></strong></p>
+
+      <div class="sum-row sum-row--big">
+        <span data-paid-method></span>
+        <span class="sum-row__value" data-paid-amount>0 Ft</span>
+      </div>
+
+      <p class="confirm__eta" data-paid-note></p>
+
+      <button type="button" class="btn btn--ghost btn--block" data-paid-close>Kész</button>
     </div>
   </div>
 

@@ -187,7 +187,9 @@
         <p class="order-head__meta" data-status-meta></p>
       </div>
       <div class="order-head__actions">
+        <span class="pay-badge" data-payment-badge hidden></span>
         <button type="button" class="btn btn--inline" data-status-serve-all hidden>Mindet kiszolgáltam</button>
+        <button type="button" class="btn btn--ghost btn--inline" data-status-pay>Fizetés rögzítése</button>
         <button type="button" class="btn btn--ghost btn--inline" data-status-print disabled>Nyomtatás</button>
         <button type="button" class="btn btn--ghost btn--inline" data-status-order>Új tétel</button>
         <button type="button" class="btn btn--ghost btn--inline" data-status-close>Vissza a térképhez</button>
@@ -195,6 +197,19 @@
     </header>
 
     <div class="status-body">
+      <!-- Figyelmeztetés nyomtatás előtt: nem tiltás, csak emlékeztető. -->
+      <div class="pay-warning" data-print-warning hidden>
+        <p class="pay-warning__text">
+          A rendelés még <strong>nincs kifizetve</strong>. Rögzítsd a fizetést a blokk
+          kiadása előtt — vagy nyomtass most, és rögzítsd utána.
+        </p>
+        <div class="pay-warning__actions">
+          <button type="button" class="btn btn--sm" data-warning-pay>Fizetés rögzítése</button>
+          <button type="button" class="btn btn--ghost btn--sm" data-print-anyway>Nyomtatás mindenképp</button>
+          <button type="button" class="btn btn--ghost btn--sm" data-warning-close>Mégse</button>
+        </div>
+      </div>
+
       <div data-status-groups></div>
       <p class="status-empty" data-status-empty hidden>
         Ehhez az asztalhoz még nincs leadott tétel.
@@ -205,6 +220,31 @@
       <span>Rendelés összesen</span>
       <span class="cart-total__value" data-status-total>0 Ft</span>
     </footer>
+  </div>
+
+  <!-- Fizetés rögzítése -->
+  <div class="dialog" data-payment-dialog hidden>
+    <div class="dialog__box dialog__box--wide">
+      <h2 class="dialog__title">Fizetés rögzítése</h2>
+      <p class="dialog__note" data-payment-note></p>
+
+      <div class="pay-methods" data-payment-methods></div>
+
+      <label class="field" data-field="amount">
+        <span class="field__label">Összeg (Ft)</span>
+        <input class="field__input" type="number" inputmode="numeric" min="1" data-payment-amount>
+        <span class="field__error"></span>
+      </label>
+      <p class="dialog__note">
+        Alapértelmezésben a teljes hátralék. Részfizetésnél írd át — a rendelés akkor
+        lesz kifizetett, ha a befizetések elérik a végösszeget.
+      </p>
+
+      <div class="dialog__actions">
+        <button type="button" class="btn" data-payment-confirm disabled>Rögzítés</button>
+        <button type="button" class="btn btn--ghost" data-payment-cancel>Mégse</button>
+      </div>
+    </div>
   </div>
 
   <!-- Tétel testreszabása -->
@@ -254,6 +294,7 @@
   <p class="toast" data-toast hidden></p>
 
   <script src="/socket.io/socket.io.js"></script>
+  <script src="/shared/constants.js"></script>
   <script src="/shared/socketEvents.js"></script>
   <script src="/shared/socketClient.js"></script>
   <script src="/shared/auth.js"></script>

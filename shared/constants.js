@@ -92,6 +92,25 @@
     ATM_LATER: 'atm_later'
   };
 
+  /** Fizetesi modok cimkevel es rovid leirassal - a feluletek ebbol epitkeznek. */
+  const PAYMENT_METHODS = [
+    { key: PAYMENT_METHOD.CARD, label: 'Bankkártya', note: 'Bank- vagy hitelkártya' },
+    { key: PAYMENT_METHOD.SZEP_CARD, label: 'SZÉP kártya', note: 'Vendéglátás zseb' },
+    { key: PAYMENT_METHOD.COUPON, label: 'Kupon', note: 'Utalvány, kupon' },
+    { key: PAYMENT_METHOD.CASH, label: 'Készpénz', note: 'Fizetés a helyszínen' },
+    { key: PAYMENT_METHOD.ATM_LATER, label: 'Utólagos ATM', note: 'Később, átutalással' }
+  ];
+
+  /**
+   * A rendeles fizetettsegi allapota. Szandekosan kulon a rendeles
+   * eletciklusatol (`status`): egy online rendelest a vendeg mar a leadaskor
+   * kifizethet, miközben az etel meg el sem keszult.
+   */
+  const PAYMENT_STATUS = {
+    UNPAID: 'unpaid',
+    PAID: 'paid'
+  };
+
   /** Menukategoriak alapertelmezett nevei. */
   const MENU_CATEGORY_NAMES = {
     FOOD: 'Etelek',
@@ -156,6 +175,8 @@
     ORDER_ITEM_STATUS,
     TABLE_STATE,
     PAYMENT_METHOD,
+    PAYMENT_METHODS,
+    PAYMENT_STATUS,
     MENU_CATEGORY_NAMES,
     MENU_CATEGORY_KIND,
     MENU_CATEGORY_KINDS,

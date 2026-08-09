@@ -8,6 +8,7 @@ const {
   userRepository
 } = require('../db/repositories');
 const menuService = require('./menuService');
+const paymentService = require('./paymentService');
 const {
   emitOrderCreated,
   emitOrderItemsAdded,
@@ -136,6 +137,8 @@ function toOrderView(order) {
     status: order.status,
     // A vendegblokkon is ez az azonosito jelenik meg.
     receiptNumber: order.receiptNumber || null,
+    // Fizetettsegi allapot (12. szegmens) - a rendeles eletciklusatol fuggetlen.
+    paymentStatus: order.paymentStatus || 'unpaid',
     createdAt: order.createdAt,
     waiterId: order.waiterId,
     waiterName: waiterNameOf(order.waiterId),
@@ -466,6 +469,9 @@ async function updateItemStatus(restaurantId, orderItemId, status) {
 
   if (status === ORDER_ITEM_STATUS.SERVED) {
     emitOrderItemServed(restaurantId, itemView, context);
+    // Ha ez volt az utolso kint levo tetel, es mar ki is fizettek, a rendeles
+    // lezarul - igy szabadul fel az asztal a terkepen.
+    await paymentService.closeIfSettled(restaurantId, order.id);
   } else {
     emitOrderItemStatusChanged(restaurantId, itemView, context);
   }
@@ -536,6 +542,9 @@ async function serveAllReady(restaurantId, orderId) {
   // allItemsServed: false erkezne.
   const context = toOrderContext(order);
   served.forEach((item) => emitOrderItemServed(restaurantId, item, context));
+
+  // Kifizetett rendelesnel az utolso kiszolgalt tetel lezarja a rendelest.
+  if (served.length) await paymentService.closeIfSettled(restaurantId, order.id);
 
   return { order: toOrderView(order), items: served, count: served.length };
 }

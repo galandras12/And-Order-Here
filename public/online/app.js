@@ -15,6 +15,25 @@
   var CART_KEY = 'aoh.online.cart';
   var THEME_KEY = 'aoh.online.theme';
 
+  /**
+   * A penztarban felajanlott fizetesi modok.
+   *
+   * A helyszini fizetes szandekosan egyetlen, egyertelmuen jelolt opcio azoknak,
+   * akik nem akarnak vagy nem tudnak online fizetni - keszpenzkent rogzul, a
+   * pincer pedig latja a modot es az osszeget a rendeles attekintojeben.
+   */
+  var CHECKOUT_METHODS = [
+    { key: 'card', label: 'Bankkártya', note: 'Bank- vagy hitelkártya', simulated: true },
+    { key: 'szep_card', label: 'SZÉP kártya', note: 'Vendéglátás zseb', simulated: true },
+    { key: 'coupon', label: 'Kupon', note: 'Utalvány, kupon', simulated: true },
+    {
+      key: 'cash',
+      label: 'Fizetés a helyszínen',
+      note: 'Készpénz vagy ATM — a pultnál rendezed',
+      simulated: false
+    }
+  ];
+
   var state = {
     restaurant: null,
     menu: { categories: [], items: [], allergens: [] },
@@ -24,6 +43,9 @@
     editingIndex: null,
     draft: null,
     order: null,
+    /** A penztar adatai (GET /api/orders/:id/payments). */
+    checkout: null,
+    checkoutMethod: null,
     lastEvent: null,
     submitting: false
   };
@@ -540,8 +562,159 @@
       list.appendChild(row);
     });
 
-    el('[data-pay-placeholder]').hidden = true;
     el('[data-confirm]').hidden = false;
+  }
+
+  /* ---------------------------------------------------------- penztar */
+
+  /**
+   * Penztar megnyitasa: a szervertol kerjuk le a fizetendo osszeget (AFA-val es
+   * szervizdijjal egyutt), hogy a vendeg pontosan azt lassa, amit fizetnie kell.
+   */
+  function openCheckout() {
+    if (!state.order) return;
+
+    state.checkoutMethod = null;
+    el('[data-checkout-submit]').disabled = true;
+    el('[data-checkout-note]').hidden = true;
+
+    api('/api/orders/' + state.order.id + '/payments')
+      .then(function (data) {
+        state.checkout = data;
+        renderCheckout();
+        el('[data-confirm]').hidden = true;
+        el('[data-checkout]').hidden = false;
+      })
+      .catch(function (err) {
+        toast(err.message || 'A pénztár nem tölthető be.', true);
+      });
+  }
+
+  function renderCheckout() {
+    var checkout = state.checkout;
+    var totals = checkout.totals;
+
+    el('[data-checkout-number]').textContent = checkout.receiptNumber || '—';
+    el('[data-checkout-subtotal]').textContent = money(totals.subtotal);
+
+    if (totals.vatRate) {
+      el('[data-checkout-vat-label]').textContent = 'ÁFA (' + totals.vatRate + '%)';
+      el('[data-checkout-vat]').textContent = money(totals.vatAmount);
+      el('[data-checkout-vat-row]').hidden = false;
+    }
+    if (totals.serviceFeeRate) {
+      el('[data-checkout-service-label]').textContent = 'Szervizdíj (' + totals.serviceFeeRate + '%)';
+      el('[data-checkout-service]').textContent = money(totals.serviceFeeAmount);
+      el('[data-checkout-service-row]').hidden = false;
+    }
+    el('[data-checkout-total]').textContent = money(checkout.dueAmount || checkout.total);
+
+    var list = el('[data-checkout-items]');
+    list.innerHTML = '';
+    (state.order.items || []).forEach(function (item) {
+      var row = document.createElement('li');
+      row.className = 'confirm__item';
+
+      var left = document.createElement('span');
+      left.textContent = item.quantity + '× ' + item.name;
+      if (item.extras.length) {
+        var detail = document.createElement('span');
+        detail.className = 'confirm__item-detail';
+        detail.textContent = item.extras.map(function (e) { return '+ ' + e.name; }).join('  ');
+        left.appendChild(detail);
+      }
+
+      var right = document.createElement('span');
+      right.textContent = money(item.lineTotal);
+
+      row.appendChild(left);
+      row.appendChild(right);
+      list.appendChild(row);
+    });
+
+    renderCheckoutMethods();
+  }
+
+  function renderCheckoutMethods() {
+    var list = el('[data-checkout-methods]');
+    list.innerHTML = '';
+
+    CHECKOUT_METHODS.forEach(function (method) {
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'pay-method' + (state.checkoutMethod === method.key ? ' is-selected' : '');
+      button.dataset.payMethod = method.key;
+
+      var label = document.createElement('span');
+      label.className = 'pay-method__label';
+      label.textContent = method.label;
+
+      var note = document.createElement('span');
+      note.className = 'pay-method__note';
+      note.textContent = method.note;
+
+      button.appendChild(label);
+      button.appendChild(note);
+      button.addEventListener('click', function () {
+        state.checkoutMethod = method.key;
+        renderCheckoutMethods();
+
+        var noteBox = el('[data-checkout-note]');
+        noteBox.hidden = false;
+        noteBox.textContent = method.simulated
+          ? 'Szimulált fizetés: a rendszer csak a fizetési módot rögzíti — a tényleges terhelés nem itt történik.'
+          : 'A pultnál fizetsz készpénzzel vagy kártyával; a kollégánk látni fogja a rendelésed.';
+
+        el('[data-checkout-submit]').disabled = false;
+      });
+
+      list.appendChild(button);
+    });
+  }
+
+  /**
+   * Fizetés rögzítése.
+   *
+   * TODO (kesobbi szegmens): itt kotheto be valodi fizetesi szolgaltato
+   * (SimplePay, Barion, Stripe). A gomb ekkor a szolgaltato feluletere vinne, es
+   * csak a sikeres tranzakcio utan hivnank a POST /api/orders/:id/payments
+   * vegpontot - a felulet tobbi resze valtozatlan maradhat.
+   */
+  function submitCheckout() {
+    if (!state.order || !state.checkoutMethod || state.submitting) return;
+
+    state.submitting = true;
+    var button = el('[data-checkout-submit]');
+    button.disabled = true;
+    button.textContent = 'Fizetés…';
+
+    api('/api/orders/' + state.order.id + '/payments', {
+      method: 'POST',
+      body: { method: state.checkoutMethod }
+    })
+      .then(function (result) {
+        var method = CHECKOUT_METHODS.filter(function (m) {
+          return m.key === result.payment.method;
+        })[0];
+
+        el('[data-paid-number]').textContent = state.order.receiptNumber || '—';
+        el('[data-paid-method]').textContent = method ? method.label : result.payment.method;
+        el('[data-paid-amount]').textContent = money(result.payment.amount);
+        el('[data-paid-note]').textContent = method && method.simulated
+          ? 'Szimulált fizetési visszaigazolás — a rendelésed fizetettként szerepel a rendszerben.'
+          : 'A helyszíni fizetést rögzítettük; a pultnál tudod rendezni.';
+
+        el('[data-checkout]').hidden = true;
+        el('[data-paid]').hidden = false;
+      })
+      .catch(function (err) {
+        toast(err.message || 'A fizetés rögzítése nem sikerült.', true);
+      })
+      .finally(function () {
+        state.submitting = false;
+        button.textContent = 'Fizetés';
+        button.disabled = !state.checkoutMethod;
+      });
   }
 
   /* ---------------------------------------------------------- betoltes */
@@ -607,9 +780,17 @@
       renderDraftTotal();
     });
 
-    // A fizetési folyamat a 12. szegmensben készül el; itt csak a helye van meg.
-    el('[data-pay]').addEventListener('click', function () {
-      el('[data-pay-placeholder]').hidden = false;
+    el('[data-pay]').addEventListener('click', openCheckout);
+    el('[data-checkout-submit]').addEventListener('click', submitCheckout);
+    el('[data-checkout-back]').addEventListener('click', function () {
+      el('[data-checkout]').hidden = true;
+      el('[data-confirm]').hidden = false;
+    });
+    el('[data-paid-close]').addEventListener('click', function () {
+      el('[data-paid]').hidden = true;
+      el('[data-confirm]').hidden = true;
+      state.order = null;
+      state.checkout = null;
     });
     el('[data-confirm-close]').addEventListener('click', function () {
       el('[data-confirm]').hidden = true;

@@ -1,7 +1,7 @@
 const { COLLECTIONS, MENU_CATEGORY_KIND } = require('../../shared/constants');
 
 /** A JSON fajl sema verzioja - a migraciok ez alapjan futnak le. */
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 
 /**
  * Ures adatbazis: minden kollekcio egy-egy tomb a JSON fajlon belul.
@@ -147,6 +147,30 @@ const MIGRATIONS = {
     for (const order of data.orders || []) {
       if (order.guestName !== undefined) continue;
       order.guestName = null;
+      changed = true;
+    }
+
+    return changed;
+  },
+
+  /**
+   * 6 -> 7
+   *   - orders.paymentStatus: a fizetettsegi allapot (12. szegmens). A korabbi
+   *     rendelesek a mar rogzitett fizeteseik osszege alapjan kapjak meg.
+   */
+  7(data) {
+    let changed = false;
+
+    const paidByOrder = new Map();
+    for (const payment of data.payments || []) {
+      paidByOrder.set(payment.orderId, (paidByOrder.get(payment.orderId) || 0) + payment.amount);
+    }
+
+    for (const order of data.orders || []) {
+      if (order.paymentStatus !== undefined) continue;
+      // A vegosszeg a tetelekbol szamolodik; a migracio csak azt tudja, volt-e
+      // egyaltalan fizetes - a pontos allapotot a service ujraszamolja.
+      order.paymentStatus = paidByOrder.get(order.id) > 0 ? 'paid' : 'unpaid';
       changed = true;
     }
 

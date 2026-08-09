@@ -570,7 +570,7 @@
     // Ha eppen nyitva van a rendelesfelvetel vagy az attekinto, azok is
     // frissulnek (mas pincer is adhatott tetelt ugyanahhoz az asztalhoz).
     ['table:status_changed', 'table:reserved', 'order:created', 'order_item:added',
-      'order_item:served'].forEach(function (event) {
+      'order_item:served', 'order:payment_recorded'].forEach(function (event) {
       socket.on(event, function () {
         refreshViews();
       });

@@ -45,9 +45,15 @@
 
   var FLASH_MS = 2400;
 
+  /** Fizetesi modok a kozos konstansokbol. */
+  var PAYMENT_METHODS = window.APP_CONSTANTS.PAYMENT_METHODS;
+
   var state = {
     context: null,
     order: null,
+    /** A rendeles fizetesi allapota (GET /api/orders/:id/payments). */
+    payment: null,
+    paymentDraft: { method: null, amount: 0 },
     /** itemId -> allapot az elozo megjelenitesbol (a felvillanashoz). */
     previousStatuses: {},
     /** itemId -> mikor lett elkeszult (a kiemeles idejere). */
@@ -99,13 +105,17 @@
 
     var serveAll = el('[data-status-serve-all]');
     var print = el('[data-status-print]');
+    var pay = el('[data-status-pay]');
 
     if (!order) {
       el('[data-status-meta]').textContent = 'Ehhez az asztalhoz nincs nyitott rendelés.';
       serveAll.hidden = true;
       print.disabled = true;
+      pay.hidden = true;
+      el('[data-payment-badge]').hidden = true;
       return;
     }
+    pay.hidden = false;
 
     var parts = [];
     // A blokkon is ez az azonosito jelenik meg - igy a pincer papir nelkul is
@@ -130,6 +140,121 @@
     print.title = order.allItemsServed
       ? 'A rendelés minden tétele kiszolgálva.'
       : 'Amíg van ki nem szolgált tétel, a blokk nem nyomtatható.';
+
+    renderPaymentBadge();
+  }
+
+  /* ------------------------------------------------------------ fizetes */
+
+  function isPaid() {
+    return Boolean(state.payment && state.payment.paymentStatus === 'paid');
+  }
+
+  function methodLabel(key) {
+    var found = PAYMENT_METHODS.filter(function (m) { return m.key === key; })[0];
+    return found ? found.label : key;
+  }
+
+  /** Fizetettsegi jelveny a fejlecben - futolagos pillantasra is lathato. */
+  function renderPaymentBadge() {
+    var badge = el('[data-payment-badge]');
+    var payment = state.payment;
+    var pay = el('[data-status-pay]');
+
+    if (!payment) {
+      badge.hidden = true;
+      return;
+    }
+
+    badge.hidden = false;
+    badge.className = 'pay-badge pay-badge--' + payment.paymentStatus;
+
+    if (payment.paymentStatus === 'paid') {
+      var methods = payment.payments.map(function (p) { return methodLabel(p.method); });
+      badge.textContent = 'Kifizetve · ' + money(payment.paidAmount) +
+        (methods.length ? ' · ' + methods.join(', ') : '');
+      pay.hidden = true;
+    } else {
+      badge.textContent = payment.paidAmount
+        ? 'Hátralék: ' + money(payment.dueAmount) + ' (befizetve ' + money(payment.paidAmount) + ')'
+        : 'Fizetésre vár · ' + money(payment.total);
+      pay.hidden = false;
+    }
+  }
+
+  function renderPaymentMethods() {
+    var list = el('[data-payment-methods]');
+    list.innerHTML = '';
+
+    PAYMENT_METHODS.forEach(function (method) {
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'pay-method' +
+        (state.paymentDraft.method === method.key ? ' is-selected' : '');
+      button.dataset.payMethod = method.key;
+
+      var label = document.createElement('span');
+      label.className = 'pay-method__label';
+      label.textContent = method.label;
+
+      var note = document.createElement('span');
+      note.className = 'pay-method__note';
+      note.textContent = method.note;
+
+      button.appendChild(label);
+      button.appendChild(note);
+      button.addEventListener('click', function () {
+        state.paymentDraft.method = method.key;
+        renderPaymentMethods();
+        el('[data-payment-confirm]').disabled = false;
+      });
+
+      list.appendChild(button);
+    });
+  }
+
+  function openPaymentDialog() {
+    if (!state.order || !state.payment) return;
+
+    state.paymentDraft = { method: null, amount: state.payment.dueAmount };
+    el('[data-payment-note]').textContent =
+      (state.order.tableLabel || 'Online rendelés') + ' · fizetendő: ' +
+      money(state.payment.dueAmount) +
+      (state.payment.paidAmount ? ' (eddig befizetve: ' + money(state.payment.paidAmount) + ')' : '');
+    el('[data-payment-amount]').value = state.payment.dueAmount;
+    el('[data-payment-confirm]').disabled = true;
+
+    renderPaymentMethods();
+    el('[data-print-warning]').hidden = true;
+    el('[data-payment-dialog]').hidden = false;
+  }
+
+  function submitPayment() {
+    if (!state.order || !state.paymentDraft.method) return;
+
+    var button = el('[data-payment-confirm]');
+    var amount = Number(el('[data-payment-amount]').value);
+    button.disabled = true;
+
+    deps
+      .api('/api/orders/' + state.order.id + '/payments', {
+        method: 'POST',
+        body: { method: state.paymentDraft.method, amount: amount > 0 ? amount : undefined }
+      })
+      .then(function (result) {
+        el('[data-payment-dialog]').hidden = true;
+        deps.toast(
+          methodLabel(result.payment.method) + ' · ' + money(result.payment.amount) + ' rögzítve.'
+        );
+        if (typeof deps.onChanged === 'function') deps.onChanged(state.order);
+        return load();
+      })
+      .catch(function (err) {
+        deps.toast(err.message || 'A fizetés rögzítése nem sikerült.', true);
+      })
+      .finally(function () {
+        button.disabled = !state.paymentDraft.method;
+      });
   }
 
   function renderRow(item) {
@@ -377,6 +502,16 @@
       return;
     }
 
+    // Ha meg nincs kifizetve, eloszor figyelmeztetunk - de nem tiltjuk meg:
+    // eletszeru, hogy a blokk elobb keszul el, mint a fizetes.
+    if (!isPaid() && !state.printWarned) {
+      state.printWarned = true;
+      el('[data-print-warning]').hidden = false;
+      return;
+    }
+    state.printWarned = false;
+    el('[data-print-warning]').hidden = true;
+
     var target = window.open('/waiter/receipt-print.html?orderId=' + encodeURIComponent(order.id), '_blank');
     if (!target) {
       deps.toast('A böngésző blokkolta a nyomtatási ablakot. Engedélyezd a felugró ablakokat.', true);
@@ -390,13 +525,39 @@
 
   function load() {
     var context = state.context;
-    var request = context.type === 'table'
-      ? deps.api('/api/waiter/tables/' + context.tableId + '/order')
-      : deps.api('/api/waiter/orders/' + context.orderId);
+
+    // Ha mar tudjuk, melyik rendelest mutatjuk, azt kerjuk le nev szerint - az
+    // asztal vegpontja csak a **nyitott** rendelest adja vissza, a kifizetett,
+    // lezart rendeles viszont tovabbra is latszodjon a nezetben (a pincer meg
+    // nyomtathat vagy visszanezhet).
+    var request = state.order
+      ? deps.api('/api/waiter/orders/' + state.order.id)
+      : (context.type === 'table'
+        ? deps.api('/api/waiter/tables/' + context.tableId + '/order')
+        : deps.api('/api/waiter/orders/' + context.orderId));
 
     return request.then(function (data) {
       applyOrder(data.order || null);
-      return data.order || null;
+
+      if (!data.order) {
+        state.payment = null;
+        renderPaymentBadge();
+        return null;
+      }
+
+      // A fizetesi allapotot kulon kerjuk le: ez adja a vegosszeget AFA-val es
+      // szervizdijjal egyutt, amit fizetni kell.
+      return deps
+        .api('/api/orders/' + data.order.id + '/payments')
+        .then(function (payment) {
+          state.payment = payment;
+          renderHead();
+          return data.order;
+        })
+        .catch(function () {
+          state.payment = null;
+          return data.order;
+        });
     });
   }
 
@@ -407,8 +568,11 @@
   function open(context) {
     state.context = context;
     state.order = null;
+    state.payment = null;
+    state.printWarned = false;
     state.previousStatuses = {};
     state.flashedAt = {};
+    el('[data-print-warning]').hidden = true;
 
     el('[data-status-title]').textContent =
       (context.type === 'table' ? context.label : 'Online rendelés') + ' – áttekintés';
@@ -459,8 +623,29 @@
 
     el('[data-status-print]').addEventListener('click', printReceipt);
 
+    el('[data-status-pay]').addEventListener('click', openPaymentDialog);
+    el('[data-warning-pay]').addEventListener('click', function () {
+      el('[data-print-warning]').hidden = true;
+      openPaymentDialog();
+    });
+    el('[data-print-anyway]').addEventListener('click', function () {
+      el('[data-print-warning]').hidden = true;
+      printReceipt();
+    });
+    el('[data-warning-close]').addEventListener('click', function () {
+      el('[data-print-warning]').hidden = true;
+      state.printWarned = false;
+    });
+
+    el('[data-payment-confirm]').addEventListener('click', submitPayment);
+    el('[data-payment-cancel]').addEventListener('click', function () {
+      el('[data-payment-dialog]').hidden = true;
+    });
+
     document.addEventListener('keydown', function (event) {
-      if (event.key === 'Escape' && isOpen()) close();
+      if (event.key !== 'Escape') return;
+      if (!el('[data-payment-dialog]').hidden) el('[data-payment-dialog]').hidden = true;
+      else if (isOpen()) close();
     });
   }
 

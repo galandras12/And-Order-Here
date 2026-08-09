@@ -29,6 +29,8 @@
     // Meglevo (nyitott) rendeleshez adtak uj teteleket.
     ORDER_ITEM_ADDED: 'order_item:added',
     ORDER_ITEM_STATUS_CHANGED: 'order_item:status_changed',
+    // Fizetes rogzult a rendelesre (12. szegmens).
+    ORDER_PAYMENT_RECORDED: 'order:payment_recorded',
     ORDER_ITEM_SERVED: 'order_item:served',
     TABLE_STATUS_CHANGED: 'table:status_changed',
     TABLE_RESERVED: 'table:reserved',
