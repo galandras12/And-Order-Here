@@ -65,6 +65,15 @@ class RateLimiter {
     return { blocked: false, remaining: this.maxAttempts - entry.count };
   }
 
+  /**
+   * Probalkozas rogzitese ott, ahol nem hiba szamit, hanem maga a muvelet
+   * (pl. publikus, bejelentkezes nelkuli rendelesleadas gyakorisaga).
+   * Ugyanaz a szamlalo, csak beszedes nev.
+   */
+  registerAttempt(key) {
+    return this.registerFailure(key);
+  }
+
   /** Sikeres belepes - a szamlalo nullazasa. */
   reset(key) {
     this.entries.delete(key);

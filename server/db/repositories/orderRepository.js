@@ -43,7 +43,8 @@ const orderRepository = {
 
   /**
    * @param {{ restaurantId: string, tableId?: string|null, type?: string,
-   *           waiterId?: string|null, status?: string }} input
+   *           waiterId?: string|null, status?: string, guestName?: string|null,
+   *           receiptNumber?: string, createdAt?: string }} input
    */
   async createOrder(input) {
     const type = input.type || (input.tableId ? ORDER_TYPE.DINE_IN : ORDER_TYPE.ONLINE);
@@ -64,6 +65,8 @@ const orderRepository = {
       tableId: type === ORDER_TYPE.ONLINE ? null : input.tableId,
       type,
       waiterId: input.waiterId || null,
+      // Online rendelesnel a vendeg neve - ebbol tudja a pincer, kihez tartozik.
+      guestName: input.guestName || null,
       status,
       // A blokk azonositoja mar itt eldol, hogy nyomtataskor ne valtozzon.
       receiptNumber: input.receiptNumber || generateReceiptNumber(),

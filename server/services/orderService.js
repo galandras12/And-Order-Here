@@ -7,6 +7,7 @@ const {
   extraRepository,
   userRepository
 } = require('../db/repositories');
+const menuService = require('./menuService');
 const {
   emitOrderCreated,
   emitOrderItemsAdded,
@@ -42,25 +43,14 @@ const VALID_ITEM_STATUSES = Object.values(ORDER_ITEM_STATUS);
 /* ------------------------------------------------------------------- menu */
 
 /**
- * A pinceri rendelesfelvetel etlapja: kategoriak, elerheto tetelek, extrak.
- * A 4. szegmensben felvitt admin adatokat olvassa, csak isAvailable tetelekkel.
+ * A pinceri rendelesfelvetel etlapja.
+ *
+ * Ugyanaz a fuggveny szolgalja ki az online vendegfeluletet is
+ * (`menuService.getAvailableMenu`), hogy a ket helyen ne csuszhasson szet, mi
+ * szamit elerheto tetelnek.
  */
 function getMenu(restaurantId) {
-  const categories = menuCategoryRepository.getByRestaurant(restaurantId);
-  const categoryIds = categories.map((category) => category.id);
-
-  const items = menuItemRepository
-    .getByCategoryIds(categoryIds)
-    .filter((item) => item.isAvailable)
-    .sort((a, b) => a.name.localeCompare(b.name, 'hu'));
-
-  return {
-    categories,
-    items,
-    extras: extraRepository
-      .getByRestaurant(restaurantId)
-      .sort((a, b) => a.name.localeCompare(b.name, 'hu'))
-  };
+  return menuService.getAvailableMenu(restaurantId);
 }
 
 /* --------------------------------------------------------------- nezetek */
@@ -221,10 +211,13 @@ function listOpenOnlineOrders(restaurantId) {
 
 /* ------------------------------------------------------------- leadas */
 
-/** A kosar tetelek ellenorzese es normalizalasa. */
-function validateItems(restaurantId, rawItems) {
-  const validator = createValidator();
-
+/**
+ * A kosar tetelek ellenorzese es normalizalasa.
+ *
+ * A `validator` kivulrol is atadhato: igy az online leadasnal a vendeg neve es
+ * a tetelek hibai egyszerre, egy valaszban jutnak vissza.
+ */
+function validateItems(restaurantId, rawItems, validator = createValidator()) {
   if (!Array.isArray(rawItems) || rawItems.length === 0) {
     validator.fail('items', 'Legalább egy tételt adj hozzá a rendeléshez.');
     validator.throwIfInvalid('A rendelés adatai hibásak.');
@@ -344,6 +337,83 @@ async function submitOrder(restaurantId, waiterId, input = {}) {
   }
 
   return { order: toOrderView(order), addedItems, created };
+}
+
+/* ------------------------------------------------------ online leadas */
+
+/**
+ * A vendegnek visszaadott rendeles-kep.
+ *
+ * Szandekosan szukebb, mint a pinceri nezet: a vendeget a sajat tetelei, az
+ * osszeg es a rendeles azonositoja erdekli - a belso allapotok, a pincer es az
+ * asztal nem.
+ */
+function toGuestOrderView(order) {
+  const items = orderItemRepository
+    .getByOrder(order.id)
+    .map((item) => toItemView(item, order))
+    .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+  return {
+    id: order.id,
+    receiptNumber: order.receiptNumber || null,
+    guestName: order.guestName || '',
+    createdAt: order.createdAt,
+    items: items.map((item) => ({
+      name: item.name,
+      quantity: item.quantity,
+      comment: item.comment,
+      extras: item.extras.map((extra) => ({ name: extra.name, price: extra.price })),
+      unitPrice: item.unitPrice,
+      lineTotal: item.lineTotal
+    })),
+    itemCount: items.reduce((total, item) => total + item.quantity, 0),
+    total: items.reduce((total, item) => total + item.lineTotal, 0)
+  };
+}
+
+/**
+ * Online rendeles leadasa a vendegfeluletrol - bejelentkezes nelkul.
+ *
+ * A rendeles `type: online`, `tableId: null`, `waiterId: null`, es a vendeg
+ * neve a `guestName` mezobe kerul. Minden tetel `pending` allapotban indul, es
+ * ugyanaz az `order:created` esemeny megy ki, mint a pinceri leadasnal - igy a
+ * terkep auto ikonja (6. szegmens) es a konyhai munkapult (9. szegmens)
+ * valtoztatas nelkul mukodik online rendelesre is.
+ *
+ * @param {string} restaurantId
+ * @param {{ guestName: string, items: object[] }} input
+ * @returns {Promise<{ order: object }>}
+ */
+async function submitOnlineOrder(restaurantId, input = {}) {
+  const validator = createValidator();
+
+  // TODO (16. szegmens - GDPR): e-mail / telefonszam bekerese es a hozza tartozo
+  // adatkezelesi tajekoztato ott keszul el. Egyelore szandekosan csak a nevet
+  // kerjuk be - annyit, amennyi a helyszini kiszolgalashoz kell.
+  validator.requiredString('guestName', input.guestName, { max: 80 });
+  const guestName = trimmed(input.guestName);
+  if (guestName && guestName.length < 2) {
+    validator.fail('guestName', 'A név legalább 2 karakter legyen.');
+  }
+
+  // A tetelek hibai ugyanebbe a validatorba gyulnek, hogy egy korben
+  // visszakapja oket a vendeg.
+  const items = validateItems(restaurantId, input.items, validator);
+
+  const order = await orderRepository.createOrder({
+    restaurantId,
+    tableId: null,
+    type: ORDER_TYPE.ONLINE,
+    waiterId: null,
+    status: ORDER_STATUS.NEW,
+    guestName
+  });
+
+  const addedItems = await orderItemRepository.addItems(order.id, items);
+  emitOrderCreated(order, addedItems);
+
+  return { order: toGuestOrderView(order) };
 }
 
 /* -------------------------------------------------- tetel allapotvaltas */
@@ -478,10 +548,12 @@ module.exports = {
   getOrder,
   listOpenOnlineOrders,
   submitOrder,
+  submitOnlineOrder,
   updateItemStatus,
   markItemServed,
   serveAllReady,
   toItemView,
   toOrderView,
+  toGuestOrderView,
   toOrderContext
 };

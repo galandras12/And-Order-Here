@@ -24,8 +24,8 @@ JWT-alapú bejelentkezés, natív HTML/CSS/JavaScript kliensek — külső front
 keretrendszer nélkül. Eddig a projektváz, az adattárolási réteg, az
 autentikáció, a valós idejű réteg, az admin menükezelés, az asztaltérkép-
 szerkesztő, a pincér élő asztaltérképe, a rendelésfelvétel, az élő
-státuszkövetés, a konyhai munkapult és a blokknyomtatás készült el; a fizetés és
-a készletkezelés a következő szegmensekben jön.
+státuszkövetés, a konyhai munkapult, a blokknyomtatás és az online vendégfelület
+készült el; a fizetés és a készletkezelés a következő szegmensekben jön.
 
 ## Indítás
 
@@ -102,7 +102,10 @@ fut (`npm run dev` ugyanez, `node --watch` automatikus újraindítással).
 | `PUT/DELETE /api/admin/zones/:id` | csak `admin` |
 | `GET /api/admin/users` | csak `admin` |
 | `GET /api/logistics/*` | csak `logistics` |
-| `GET /api/online/*` | publikus |
+| `GET /api/online/restaurant` | publikus — a vendégnek szóló alapadatok (név, cím, telefon) |
+| `GET /api/online/menu` | publikus — kategóriák és csak elérhető tételek |
+| `GET /api/online/extras` | publikus — kiegészítők |
+| `POST /api/online/orders` | publikus — vendég rendelés (`guestName` + kosár) |
 
 Hitelesítés: `Authorization: Bearer <token>` fejléc. Token nélkül `401`,
 rossz szerepkörrel `403` a válasz.
@@ -268,7 +271,11 @@ server/
   config.js     .env alapú konfiguráció
   index.js      belépési pont
 public/
-  logistics/ online/   felületenkénti statikus fájlok
+  logistics/   felületenkénti statikus fájlok
+  online/
+    index.html  vendég étlap, kosár, visszaigazolás
+    app.js      menü, kosár, leadás, téma váltás
+    online.css  mobil-first, világos/sötét témás vendég stílus
   kitchen/
     index.html  konyhai munkapult (blokkok, léptető gombok)
     app.js      betöltés, valós idejű frissülés, állapotléptetés
@@ -469,6 +476,50 @@ készül"). Erre épül majd a 16. szegmens időtúllépés-riasztása.
 
 A felület tablet és fali monitor méretre is optimalizált: kártyarács, nagy
 betűk, legalább 48 px magas gombok — párás, mozgás közbeni pillantásra tervezve.
+
+## Online rendelés (vendégfelület)
+
+A `/online` **bejelentkezés nélkül**, bárki számára elérhető. A vendég
+kategóriák szerint böngészi az étlapot, kosárba tesz, majd a nevét megadva
+leadja a rendelést.
+
+**Ugyanaz az étlap, egy forrásból.** A `GET /api/online/menu` a
+`menuService.getAvailableMenu()` függvényt hívja — ugyanazt, amit a pincér
+felület rendelésfelvétele is —, így nem tud szétcsúszni, hogy melyik felületen
+mi számít elérhető tételnek. Az admin által elfogyottra állított tétel azonnal
+eltűnik a vendég étlapjáról is (`menu_item:availability_changed` socket
+eseményre, újratöltés nélkül).
+
+**Kosár**: mennyiség, szabad szöveges megjegyzés és kiegészítők felárral —
+ugyanaz a logika, mint a pincér kosarában, vendégbarát felülettel. A kosár a
+leadásig `localStorage`-ban is megmarad, és a lebegő kosárgomb mindig mutatja a
+tételszámot és az összeget.
+
+**Vendégadat**: csak a **név** kötelező, hogy a kiszolgáló kollégának legyen
+mihez kötnie a rendelést. E-mail és telefonszám bekérése — és a hozzá tartozó
+adatkezelési tájékoztató — a 16. szegmens GDPR alpontjában készül el; a kódban
+ez `TODO` kommenttel jelölve van.
+
+**Leadás után** a rendelés `type: online`, `tableId: null`, a tételek `pending`
+állapotban, és ugyanaz az `order:created` esemény megy ki, mint a pincéri
+leadásnál. Ezért a térkép autó ikonja (6. szegmens) és a konyhai munkapult
+(9. szegmens) **változtatás nélkül** kezeli az online rendelést — a szakács
+pedig nem látja, hogy online eredetű. A vendég visszaigazoló képernyőt kap: a
+rendelés összegzését, a **hatjegyű azonosítót** (ugyanaz, ami a blokkra kerül) és
+a várakozásról szóló üzenetet.
+
+**Fizetés**: a visszaigazoláson ott a *Tovább a fizetéshez* gomb; a tényleges
+fizetési folyamat a 12. szegmensben készül el, itt egyelőre a helyét jelzi.
+
+**Design**: mobil-first (a vendégek jellemzően telefonról nyitják meg),
+világos/sötét témaváltóval — a választás `localStorage`-ba kerül, és már a
+rajzolás előtt érvényre jut, hogy ne villanjon fel a másik téma. Az
+érintőfelületek legalább 44 px magasak, a kosár pedig alulról felcsúszó lapon
+érhető el.
+
+**Publikus írás korlátozva**: a `POST /api/online/orders` kliensenként (IP)
+korlátozott (5 percenként 12 rendelés), hogy egy kliens ne tudja elárasztani a
+konyhát.
 
 ## Valós idejű réteg (Socket.io)
 

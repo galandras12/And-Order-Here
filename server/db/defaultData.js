@@ -1,7 +1,7 @@
 const { COLLECTIONS, MENU_CATEGORY_KIND } = require('../../shared/constants');
 
 /** A JSON fajl sema verzioja - a migraciok ez alapjan futnak le. */
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 
 /**
  * Ures adatbazis: minden kollekcio egy-egy tomb a JSON fajlon belul.
@@ -130,6 +130,23 @@ const MIGRATIONS = {
 
       used.add(candidate);
       order.receiptNumber = candidate;
+      changed = true;
+    }
+
+    return changed;
+  },
+
+  /**
+   * 5 -> 6
+   *   - orders.guestName: az online rendelest leado vendeg neve. A korabbi
+   *     rendeleseknel nincs ilyen adat, ezert null.
+   */
+  6(data) {
+    let changed = false;
+
+    for (const order of data.orders || []) {
+      if (order.guestName !== undefined) continue;
+      order.guestName = null;
       changed = true;
     }
 

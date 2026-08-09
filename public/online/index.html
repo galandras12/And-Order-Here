@@ -2,44 +2,174 @@
 <html lang="hu" data-interface="online">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Online rendelés</title>
   <link rel="stylesheet" href="/assets/base.css">
+  <link rel="stylesheet" href="/online/online.css">
+  <script>
+    // A témát még a rajzolás előtt beállítjuk, hogy ne villanjon fel a másik.
+    (function () {
+      try {
+        var stored = window.localStorage.getItem('aoh.online.theme');
+        if (stored === 'light' || stored === 'dark') {
+          document.documentElement.setAttribute('data-theme', stored);
+        }
+      } catch (err) { /* privát böngészés: marad az alapértelmezés */ }
+    })();
+  </script>
 </head>
-<body class="is-centered">
+<body>
   <!-- Publikus felület: nincs bejelentkezés. -->
-  <main class="screen">
-    <p class="screen__eyebrow">And Order Here</p>
-    <h1 class="screen__title">Online rendelés — hamarosan</h1>
-    <p class="screen__note">
-      Ez a felület bejelentkezés nélkül, szabadon elérhető. Az étlap és a
-      rendelésfelvétel a következő szegmensekben készül el.
-    </p>
-    <p class="screen__note" data-api-status style="margin-top:16px"></p>
+  <header class="site-head">
+    <div>
+      <p class="site-head__eyebrow">And Order Here</p>
+      <h1 class="site-head__title" data-restaurant-name>Étlap</h1>
+      <p class="site-head__meta" data-restaurant-meta></p>
+    </div>
+    <button type="button" class="theme-toggle" data-theme-toggle aria-pressed="false"
+            title="Világos és sötét téma váltása">
+      <span data-theme-icon aria-hidden="true">🌙</span>
+      <span data-theme-label>Sötét</span>
+    </button>
+  </header>
 
-    <p class="screen__note" style="margin-top:20px">
-      Élő csatorna (bejelentkezés nélkül), szobák: <code data-socket-rooms>—</code>
-    </p>
-    <ul class="event-log" data-event-log style="text-align:left">
-      <li class="event-log__empty">Még nem érkezett esemény.</li>
-    </ul>
-  </main>
+  <nav class="tabs" data-menu-tabs aria-label="Kategóriák"></nav>
+
+  <main class="menu" data-menu-grid></main>
+
+  <p class="empty-note" data-menu-empty hidden>
+    Épp nincs elérhető tétel az étlapon. Nézz vissza kicsit később!
+  </p>
+
+  <!-- Lebegő kosár: mindig kéznél van, mutatja a tételszámot és az összeget. -->
+  <button type="button" class="cart-fab" data-cart-open hidden>
+    <span class="cart-fab__icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 5h2l2.2 9.4a2 2 0 0 0 2 1.6h6.4a2 2 0 0 0 2-1.5L21 8H7"/>
+        <circle cx="10.5" cy="19.5" r="1.4"/>
+        <circle cx="17.5" cy="19.5" r="1.4"/>
+      </svg>
+    </span>
+    <span class="cart-fab__count" data-cart-count>0</span>
+    <span class="cart-fab__total" data-cart-fab-total>0 Ft</span>
+  </button>
+
+  <!-- Kosár -->
+  <div class="sheet" data-cart-sheet hidden>
+    <div class="sheet__box">
+      <header class="sheet__head">
+        <h2 class="sheet__title">Kosarad</h2>
+        <button type="button" class="icon-btn" data-cart-close aria-label="Bezárás">×</button>
+      </header>
+
+      <div class="sheet__body">
+        <ul class="cart-list" data-cart-list></ul>
+
+        <form class="guest-form" data-guest-form novalidate>
+          <label class="field" data-field="guestName">
+            <span class="field__label">A neved *</span>
+            <input class="field__input" name="guestName" maxlength="80" autocomplete="name"
+                   placeholder="pl. Kovács Anna" required>
+            <span class="field__error"></span>
+          </label>
+          <p class="guest-form__note">
+            Csak azért kérjük, hogy a kollégánk tudja, kihez tartozik a rendelés.
+          </p>
+        </form>
+      </div>
+
+      <footer class="sheet__foot">
+        <div class="sum-row">
+          <span>Összesen</span>
+          <span class="sum-row__value" data-cart-total>0 Ft</span>
+        </div>
+        <button type="button" class="btn btn--primary btn--block" data-cart-submit disabled>
+          Rendelés leadása
+        </button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Tétel testreszabása -->
+  <div class="sheet" data-customize-sheet hidden>
+    <div class="sheet__box">
+      <header class="sheet__head">
+        <h2 class="sheet__title" data-customize-name></h2>
+        <button type="button" class="icon-btn" data-customize-close aria-label="Bezárás">×</button>
+      </header>
+
+      <div class="sheet__body">
+        <p class="customize__price" data-customize-base></p>
+
+        <span class="field__label">Mennyiség</span>
+        <div class="qty">
+          <button type="button" class="qty__btn" data-qty-minus aria-label="Kevesebb">−</button>
+          <span class="qty__value" data-qty-value>1</span>
+          <button type="button" class="qty__btn" data-qty-plus aria-label="Több">+</button>
+        </div>
+
+        <label class="field">
+          <span class="field__label">Megjegyzés</span>
+          <input class="field__input" data-customize-comment maxlength="200"
+                 placeholder="pl. kevés sóval, allergia">
+        </label>
+
+        <div class="field" data-extras-field>
+          <span class="field__label">Kiegészítők</span>
+          <div class="extras-list" data-extras-list></div>
+        </div>
+      </div>
+
+      <footer class="sheet__foot">
+        <div class="sum-row">
+          <span>Tétel összesen</span>
+          <span class="sum-row__value" data-customize-total>0 Ft</span>
+        </div>
+        <button type="button" class="btn btn--primary btn--block" data-customize-confirm>
+          Kosárba
+        </button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Visszaigazolás -->
+  <div class="confirm" data-confirm hidden>
+    <div class="confirm__box">
+      <div class="confirm__check" aria-hidden="true">✓</div>
+      <h2 class="confirm__title">Köszönjük, <span data-confirm-name></span>!</h2>
+      <p class="confirm__id">Rendelés azonosító: <strong data-confirm-number></strong></p>
+
+      <ul class="confirm__items" data-confirm-items></ul>
+
+      <div class="sum-row sum-row--big">
+        <span>Összesen</span>
+        <span class="sum-row__value" data-confirm-total>0 Ft</span>
+      </div>
+
+      <p class="confirm__eta">
+        Kollégáink hamarosan elkezdik elkészíteni rendelésed.
+      </p>
+
+      <!-- A fizetési folyamat a 12. szegmensben készül el. -->
+      <button type="button" class="btn btn--primary btn--block" data-pay>Tovább a fizetéshez</button>
+      <div class="pay-placeholder" data-pay-placeholder hidden>
+        <p class="pay-placeholder__title">Fizetés — hamarosan</p>
+        <p class="pay-placeholder__note">
+          A fizetés (kártya, SZÉP-kártya, utalvány, készpénz, utólagos rendezés) a
+          következő fejlesztési szakaszban készül el. Addig a helyszínen tudsz fizetni.
+        </p>
+      </div>
+
+      <button type="button" class="btn btn--ghost btn--block" data-confirm-close>Új rendelés</button>
+    </div>
+  </div>
+
+  <p class="toast" data-toast hidden></p>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="/shared/socketEvents.js"></script>
   <script src="/shared/socketClient.js"></script>
-  <script src="/shared/eventLog.js"></script>
-  <script>
-    // Publikus végpont: token nélkül is válaszol.
-    fetch('/api/online/status')
-      .then(function (response) { return response.json(); })
-      .then(function (data) {
-        document.querySelector('[data-api-status]').textContent = data.message;
-      })
-      .catch(function () {});
-
-    // Publikus felület: token nélkül, vendégként csatlakozunk az online szobába.
-    AndOrderEventLog.start();
-  </script>
+  <script src="/online/app.js"></script>
 </body>
 </html>

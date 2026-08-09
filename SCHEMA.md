@@ -7,7 +7,7 @@ mezőt.
 
 ```json
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "restaurants": [],
   "users": [],
   "tables": [],
@@ -163,6 +163,7 @@ látni ott.
 | `type` | string | `dine_in` \| `online` |
 | `waiterId` | string → `users.id` \| null | felvevő pincér, online rendelésnél `null` |
 | `status` | string | `new` → `accepted` → `in_preparation` → `ready` → `served` → `bill_requested` → `paid`, illetve `cancelled` |
+| `guestName` | string \| null | online rendelésnél a vendég neve, egyébként `null` |
 | `receiptNumber` | string | hatjegyű azonosító a vendégblokkon |
 | `createdAt` | string (ISO 8601) | felvétel ideje |
 
@@ -282,6 +283,7 @@ A fájl `schemaVersion` mezője jelzi, melyik séma szerint készült. Indulásk
 | 3 | `orderItems.waiterId` és `createdAt` — a régi tételek a rendeléstől öröklik |
 | 4 | `menuCategories.kind` (a meglévő kategóriák a nevükből kapják meg: `Ételek` → `food`, `Italok` → `drink`, egyéb → `other`); `orderItems.preparingStartedAt` |
 | 5 | `orders.receiptNumber` — a régi rendelések is kapnak egyedi hatjegyű azonosítót, hogy a blokkjuk nyomtatható legyen |
+| 6 | `orders.guestName` — az online vendégfelülethez; a korábbi rendeléseknél `null` |
 
 Új migrációhoz: emeld a `SCHEMA_VERSION` értékét, és vedd fel a hozzá tartozó
 függvényt a `MIGRATIONS` objektumba.
