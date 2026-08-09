@@ -107,12 +107,16 @@
       return;
     }
 
-    var parts = [
+    var parts = [];
+    // A blokkon is ez az azonosito jelenik meg - igy a pincer papir nelkul is
+    // ossze tudja parositani a rendelest.
+    if (order.receiptNumber) parts.push('#' + order.receiptNumber);
+    parts.push(
       'Felvette: ' + (order.waiterName || 'ismeretlen'),
       formatTime(order.createdAt),
       order.itemCount + ' tétel',
       money(order.total)
-    ];
+    );
     if (order.readyCount) parts.push(order.readyCount + ' elkészült');
     el('[data-status-meta]').textContent = parts.join(' · ');
 
@@ -351,6 +355,37 @@
       });
   }
 
+  /* ------------------------------------------------------- nyomtatas */
+
+  /**
+   * Vendegblokk nyomtatasa.
+   *
+   * A nyomtatasi nezet kulon lapon nyilik (`receipt-print.html`), ott tolti be
+   * az adatokat, es maga inditja a bongeszo nyomtatasi parbeszedet - igy a
+   * nyomtatas nem a munkakepernyot foglalja el, es a pincer a bezaras utan
+   * ugyanitt folytatja.
+   *
+   * A gomb csak akkor aktiv, ha a szerver szerint minden tetel kiszolgalt;
+   * a szerver ezt a blokk lekeresekor ujra ellenorzi.
+   */
+  function printReceipt() {
+    var order = state.order;
+    if (!order) return;
+
+    if (!order.allItemsServed) {
+      deps.toast('A blokk csak akkor nyomtatható, ha minden tétel kiszolgálásra került.', true);
+      return;
+    }
+
+    var target = window.open('/waiter/receipt-print.html?orderId=' + encodeURIComponent(order.id), '_blank');
+    if (!target) {
+      deps.toast('A böngésző blokkolta a nyomtatási ablakot. Engedélyezd a felugró ablakokat.', true);
+      return;
+    }
+
+    deps.toast('Blokk megnyitva nyomtatásra.');
+  }
+
   /* -------------------------------------------------------- betoltes */
 
   function load() {
@@ -422,10 +457,7 @@
       if (typeof deps.onTakeOrder === 'function') deps.onTakeOrder(context);
     });
 
-    // A tenyleges nyomtatas a 10. szegmensben keszul el.
-    el('[data-status-print]').addEventListener('click', function () {
-      deps.toast('Nyomtatás — hamarosan');
-    });
+    el('[data-status-print]').addEventListener('click', printReceipt);
 
     document.addEventListener('keydown', function (event) {
       if (event.key === 'Escape' && isOpen()) close();

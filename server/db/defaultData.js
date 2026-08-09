@@ -1,7 +1,7 @@
 const { COLLECTIONS, MENU_CATEGORY_KIND } = require('../../shared/constants');
 
 /** A JSON fajl sema verzioja - a migraciok ez alapjan futnak le. */
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 /**
  * Ures adatbazis: minden kollekcio egy-egy tomb a JSON fajlon belul.
@@ -103,6 +103,33 @@ const MIGRATIONS = {
     for (const item of data.orderItems || []) {
       if (item.preparingStartedAt !== undefined) continue;
       item.preparingStartedAt = null;
+      changed = true;
+    }
+
+    return changed;
+  },
+
+  /**
+   * 4 -> 5
+   *   - orders.receiptNumber: a vendegblokkon megjeleno azonosito. A regi
+   *     rendelesek is kapnak egyet, hogy a blokkjuk kinyomtathato legyen.
+   */
+  5(data) {
+    let changed = false;
+    const used = new Set(
+      (data.orders || []).map((order) => order.receiptNumber).filter(Boolean)
+    );
+
+    for (const order of data.orders || []) {
+      if (order.receiptNumber) continue;
+
+      let candidate;
+      do {
+        candidate = String(Math.floor(100000 + Math.random() * 900000));
+      } while (used.has(candidate));
+
+      used.add(candidate);
+      order.receiptNumber = candidate;
       changed = true;
     }
 

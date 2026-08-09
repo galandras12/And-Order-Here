@@ -44,6 +44,21 @@
       }
     },
 
+    /**
+     * Csak a token es az API hivas beallitasa, bejelentkezo felulet nelkul.
+     *
+     * Olyan aloldalakhoz, amelyek egy mar bejelentkezett felulet mellett
+     * nyilnak meg (pl. a nyomtatasi nezet uj lapon): ott nincs bejelentkezo
+     * urlap, csak a mar tarolt tokenre van szukseg.
+     *
+     * @param {{ interface: string, storage?: 'local'|'session' }} options
+     * @returns {string|null} a tarolt token, ha van
+     */
+    configure: function (options) {
+      api.config = Object.assign({ interface: 'default', storage: 'local' }, options || {});
+      return api.getToken();
+    },
+
     setToken: function (token) {
       try {
         api.storage().setItem(api.tokenKey(), token);

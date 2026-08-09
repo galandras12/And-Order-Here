@@ -24,8 +24,8 @@ JWT-alapú bejelentkezés, natív HTML/CSS/JavaScript kliensek — külső front
 keretrendszer nélkül. Eddig a projektváz, az adattárolási réteg, az
 autentikáció, a valós idejű réteg, az admin menükezelés, az asztaltérkép-
 szerkesztő, a pincér élő asztaltérképe, a rendelésfelvétel, az élő
-státuszkövetés és a konyhai munkapult készült el; a fizetés, a nyomtatás és a
-készletkezelés a következő szegmensekben jön.
+státuszkövetés, a konyhai munkapult és a blokknyomtatás készült el; a fizetés és
+a készletkezelés a következő szegmensekben jön.
 
 ## Indítás
 
@@ -82,6 +82,7 @@ fut (`npm run dev` ugyanez, `node --watch` automatikus újraindítással).
 | `POST /api/waiter/orders` | csak `waiter` — rendelés leadása / bővítése |
 | `PATCH /api/waiter/order-items/:id/served` | csak `waiter` — kiszolgálás jelölése (csak `ready` tételre) |
 | `PATCH /api/waiter/orders/:id/serve-all-ready` | csak `waiter` — „Mindet kiszolgáltam" |
+| `GET /api/waiter/orders/:id/receipt` | csak `waiter` — a vendégblokk adatai (csak kiszolgált rendelésre) |
 | `GET /api/kitchen/orders` | csak `cook` — a munkapult (asztalonkénti blokkok, csak ételek) |
 | `PATCH /api/kitchen/order-items/:id/status` | csak `cook` — leadva → készül → elkészült |
 | `PATCH /api/kitchen/orders/:id/items-status` | csak `cook` — egy blokk tételei egyszerre |
@@ -278,6 +279,7 @@ public/
     app.js      betöltés, valós idejű frissítés, foglalás
     order.js    rendelésfelvétel: étlap, kosár, testreszabás, leadás
     orderStatus.js  rendelés-áttekintő: állapotkövetés, kiszolgálás jelölése
+    receipt-print.html / receipt-print.js / receipt.css   nyomtatható vendégblokk
     waiter.css  pincér-specifikus stílus
   admin/
     index.html  fülek: étterem, kategóriák, tételek, extrák, felhasználók
@@ -381,8 +383,50 @@ időbélyeget, és tételenként küldi az `order_item:served` eseményt.
 
 Amikor a rendelés **minden tétele kiszolgált**, a *Nyomtatás* gomb aktívvá
 válik. Ezt a szerver számolja (`allItemsServed` mező a rendelés válaszában és az
-asztal állapotában), nem a kliens találgatja a listából. A tényleges nyomtatás a
-10. szegmensben készül el, addig a gomb placeholder üzenetet ad.
+asztal állapotában), nem a kliens találgatja a listából.
+
+### Vendégblokk nyomtatása
+
+A *Nyomtatás* gomb új lapon nyitja meg a nyomtatási nézetet
+(`/waiter/receipt-print.html?orderId=…`), az betölti a blokk adatait, és — ha
+minden rendben — magától elindítja a böngésző nyomtatási párbeszédét. A
+párbeszéd bezárása után a lap bezárul, a pincér ott folytatja, ahol abbahagyta.
+
+Nincs nyomtató-driver és nincs szerver oldali PDF-generálás: `window.print()`
+fut, így bármelyik nyomtatóval működik, amit az operációs rendszer lát —
+hálózati vagy USB hőnyomtatóval éppúgy, mint egy A4-es lézernyomtatóval.
+
+A blokk tartalma (`GET /api/waiter/orders/:id/receipt`):
+
+- **fejléc**: étterem neve, címe, telefonszáma (admin felület, 4. szegmens),
+  a rendelés azonosítója, az asztal és a kiszolgáló pincér neve,
+- **törzs**: tételenként mennyiség, név, egységár és tételösszeg, alatta az
+  extrák `+` jellel, saját árral — **konyhai kommentek nélkül**,
+- **összesítés**: részösszeg, ÁFA, szervizdíj (mindkettő a beállított kulccsal
+  felirtatva), majd a fizetendő,
+- **lábléc**: AP kód, a kiállítás dátuma és pontos ideje, és a beállított záró
+  üzenet (alapérték: `– And-Order-Here –`).
+
+**A rendelés azonosítója** (`orders.receiptNumber`) a rendelés létrehozásakor
+születik, hatjegyű, és nem változik: az újranyomtatott blokkon is ugyanaz
+szerepel. A pincér az áttekintő fejlécében is látja (`#123456`).
+
+**Csak kiszolgált rendelésre**: amíg van készülő vagy kint lévő tétel, a végösszeg
+még változhat, ezért a végpont `409 order_not_served` hibát ad. A gomb is tiltott
+ilyenkor, de a szerver a lekéréskor újra ellenőrzi.
+
+**Árak értelmezése**: az étlapon szereplő ár a **nettó** egységár, az ÁFA és a
+szervizdíj erre rakódik rá (`részösszeg + ÁFA + szervizdíj = fizetendő`), a
+szervizdíj alapja a nettó részösszeg. Mindkét kulcsot az admin állítja.
+
+**Papírméret**: a blokk 72 mm széles (80 mm-es tekercsen ennyi a nyomtatható
+sáv; 203 dpi-n 576 pont, CSS-ben ≈272 px). A lap hosszát a nézet a kirajzolt
+tartalomból számolja és írja be a `@page` szabályba — így egy rövid blokk nem
+visz el fél lap papírt.
+
+**Hibakezelés**: hálózati hiba, lejárt munkamenet vagy ki nem szolgált rendelés
+esetén beszédes üzenet jelenik meg, és a nyomtatási párbeszéd **el sem indul** —
+üres vagy hiányos blokk nem mehet a nyomtatóra.
 
 ## Konyhai munkapult
 

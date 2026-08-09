@@ -3,6 +3,7 @@ const express = require('express');
 const floorStateService = require('../../services/floorStateService');
 const reservationService = require('../../services/reservationService');
 const orderService = require('../../services/orderService');
+const receiptService = require('../../services/receiptService');
 const { ALLERGENS } = require('../../../shared/constants');
 
 const router = express.Router();
@@ -105,6 +106,22 @@ router.get('/tables/:id/order', (req, res, next) => {
 router.get('/orders/:id', (req, res, next) => {
   try {
     res.json({ order: orderService.getOrder(req.user.restaurantId, req.params.id) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * GET /api/waiter/orders/:id/receipt
+ *
+ * A vendegblokk teljes adatcsomagja nyomtatashoz: etterem alapadatok, pincer,
+ * rendelesi azonosito, tetelek (konyhai kommentek nelkul), osszesites es a
+ * kiallitas idopontja. Csak akkor ad vissza adatot, ha a rendeles minden tetele
+ * kiszolgalt - kulonben 409 `order_not_served`.
+ */
+router.get('/orders/:id/receipt', (req, res, next) => {
+  try {
+    res.json({ receipt: receiptService.getReceipt(req.user.restaurantId, req.params.id) });
   } catch (err) {
     next(err);
   }

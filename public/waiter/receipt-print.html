@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="hu" data-interface="waiter">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Vendégblokk</title>
+  <link rel="stylesheet" href="/waiter/receipt.css">
+</head>
+<body>
+  <!-- Képernyős előnézet vezérlői: nyomtatáskor nem kerülnek papírra. -->
+  <div class="screen-bar" data-screen-bar>
+    <span class="screen-bar__title">Blokk előnézet</span>
+    <span class="screen-bar__spacer"></span>
+    <button type="button" class="screen-btn" data-print-again>Nyomtatás</button>
+    <button type="button" class="screen-btn screen-btn--ghost" data-close>Bezárás</button>
+  </div>
+
+  <p class="screen-status" data-status>Blokk betöltése…</p>
+
+  <p class="screen-error" data-error hidden></p>
+
+  <!-- A blokk maga. Ez az egyetlen elem, ami nyomtatásra kerül. -->
+  <div class="receipt" data-receipt hidden>
+    <header class="receipt__head">
+      <p class="receipt__name" data-restaurant-name></p>
+      <p class="receipt__line" data-restaurant-address></p>
+      <p class="receipt__line" data-restaurant-phone></p>
+    </header>
+
+    <div class="receipt__rule"></div>
+
+    <div class="receipt__meta">
+      <p class="receipt__row"><span>Rendelés</span><span data-receipt-number></span></p>
+      <p class="receipt__row" data-table-row hidden><span>Asztal</span><span data-table-label></span></p>
+      <p class="receipt__row" data-waiter-row hidden><span>Kiszolgálta</span><span data-waiter-name></span></p>
+    </div>
+
+    <div class="receipt__rule"></div>
+
+    <div class="receipt__items" data-items></div>
+
+    <div class="receipt__rule"></div>
+
+    <div class="receipt__totals">
+      <p class="receipt__row"><span>Részösszeg</span><span data-subtotal></span></p>
+      <p class="receipt__row" data-vat-row hidden><span data-vat-label>ÁFA</span><span data-vat></span></p>
+      <p class="receipt__row" data-service-row hidden><span data-service-label>Szervizdíj</span><span data-service></span></p>
+      <p class="receipt__row receipt__row--total"><span>Fizetendő</span><span data-total></span></p>
+    </div>
+
+    <div class="receipt__rule"></div>
+
+    <footer class="receipt__foot">
+      <p class="receipt__line" data-ap-row hidden>AP kód: <span data-ap-code></span></p>
+      <p class="receipt__line" data-issued-at></p>
+      <p class="receipt__footer-message" data-footer-message></p>
+    </footer>
+  </div>
+
+  <script src="/shared/auth.js"></script>
+  <script src="/waiter/receipt-print.js"></script>
+</body>
+</html>
