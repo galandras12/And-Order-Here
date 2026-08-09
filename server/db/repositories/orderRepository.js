@@ -10,6 +10,30 @@ const VALID_STATUSES = Object.values(ORDER_STATUS);
 /** Lezart allapotok - ezek mar nem szamitanak nyitott rendelesnek. */
 const CLOSED_STATUSES = [ORDER_STATUS.PAID, ORDER_STATUS.CANCELLED];
 
+/** A vendegblokkon megjeleno rendelesi azonosito hossza. */
+const RECEIPT_NUMBER_LENGTH = 6;
+
+/**
+ * Egyedi, RECEIPT_NUMBER_LENGTH jegyu rendelesi azonosito.
+ *
+ * A rendeles letrehozasakor kapja meg, es utana nem valtozik: igy a blokk
+ * ujranyomtatasakor is ugyanaz az azonosito jelenik meg. Az utkozest ellenorzi;
+ * ha a veletlen szam foglalt, ujra probal (egyetlen folyamat, alacsony
+ * darabszam mellett ez gyakorlatilag sosem fordul elo).
+ */
+function generateReceiptNumber() {
+  const min = 10 ** (RECEIPT_NUMBER_LENGTH - 1);
+  const max = 10 ** RECEIPT_NUMBER_LENGTH - 1;
+
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    const candidate = String(Math.floor(min + Math.random() * (max - min + 1)));
+    if (!base.find((order) => order.receiptNumber === candidate)) return candidate;
+  }
+
+  // Vegso esetben az ido also jegyeibol: rovid marad, es nem akad be a ciklus.
+  return String(Date.now()).slice(-RECEIPT_NUMBER_LENGTH);
+}
+
 /**
  * Rendelesek. Helyben fogyasztasnal tableId mutat az asztalra,
  * online rendelesnel tableId = null es waiterId = null.
@@ -41,8 +65,17 @@ const orderRepository = {
       type,
       waiterId: input.waiterId || null,
       status,
+      // A blokk azonositoja mar itt eldol, hogy nyomtataskor ne valtozzon.
+      receiptNumber: input.receiptNumber || generateReceiptNumber(),
       createdAt: input.createdAt || new Date().toISOString()
     });
+  },
+
+  /** Rendeles keresese a blokk azonositoja alapjan. */
+  findByReceiptNumber(restaurantId, receiptNumber) {
+    return base.find(
+      (order) => order.restaurantId === restaurantId && order.receiptNumber === receiptNumber
+    );
   },
 
   /**
@@ -141,3 +174,4 @@ const orderRepository = {
 };
 
 module.exports = orderRepository;
+module.exports.RECEIPT_NUMBER_LENGTH = RECEIPT_NUMBER_LENGTH;

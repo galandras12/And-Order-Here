@@ -144,6 +144,8 @@ function toOrderView(order) {
     tableLabel: table ? table.label : null,
     type: order.type,
     status: order.status,
+    // A vendegblokkon is ez az azonosito jelenik meg.
+    receiptNumber: order.receiptNumber || null,
     createdAt: order.createdAt,
     waiterId: order.waiterId,
     waiterName: waiterNameOf(order.waiterId),

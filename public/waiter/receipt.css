@@ -1,0 +1,239 @@
+/*
+ * Vendégblokk — nyomtatásra optimalizált nézet.
+ *
+ * SZÉLESSÉG. Szabvány hőnyomtató papír: 80 mm. Ebből a nyomtatható sáv
+ * jellemzően 72 mm (a két szélén ~4-4 mm holt sáv van, ahol a fej nem ír).
+ * Átszámítva:
+ *   - 203 dpi-s (a legelterjedtebb) hőnyomtatón: 72 mm = 2,835" × 203 = 576 pont,
+ *   - CSS-ben (96 dpi): 72 mm = 2,835" × 96 ≈ 272 px.
+ * A blokk ezért `width: 72mm` — milliméterben adjuk meg, nem pixelben, mert a
+ * nyomtatási CSS-ben ez a valódi fizikai méret, és így 203 és 180 dpi-s fejjel
+ * is ugyanolyan széles lesz a papíron.
+ *
+ * HOSSZ. Folytonos tekercsnél a lap annyi papírt fogyasszon, amennyi tartalom
+ * van. A `size: 80mm auto` ezt fejezné ki, de a Chrome az `auto` magasságot nem
+ * fogadja el (ilyenkor Letter méretre esik vissza, ami minden blokkra fél lap
+ * papírt jelentene), ezért a tényleges magasságot a `receipt-print.js` méri meg
+ * a kirajzolt blokkból, és onnan írja be a `@page` szabályt.
+ *
+ * BETŰMÉRET. 11 px alapméret (a tételneveknél 12 px): 72 mm-en így ~32 karakter
+ * fér ki soronként, ami elég a tételnevekhez, de nem pazarolja a papírt.
+ */
+
+:root {
+  --paper: #ffffff;
+  --ink: #101010;
+  --muted: #4a4a4a;
+  --rule: #b9b9b9;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 24px 16px 60px;
+  background: #16161a;
+  color: #f2f2f3;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* ---------- Képernyős előnézet kerete ---------- */
+
+.screen-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 520px;
+  margin: 0 auto 16px;
+}
+
+.screen-bar__title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.screen-bar__spacer {
+  flex: 1 1 auto;
+}
+
+.screen-btn {
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: 1px solid #35c46a;
+  background: #35c46a;
+  color: #04140a;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.screen-btn--ghost {
+  background: transparent;
+  color: #f2f2f3;
+  border-color: #33333a;
+}
+
+.screen-status,
+.screen-error {
+  max-width: 520px;
+  margin: 0 auto 16px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: 1px solid #33333a;
+  background: #0e0e10;
+  font-size: 14px;
+}
+
+.screen-error {
+  border-color: #ff6b6b;
+  color: #ff6b6b;
+}
+
+.screen-error[hidden],
+.screen-status[hidden],
+.receipt[hidden] {
+  display: none;
+}
+
+/* ---------- A blokk ---------- */
+
+.receipt {
+  width: 72mm;
+  margin: 0 auto;
+  padding: 3mm 4mm 8mm;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 11px;
+  line-height: 1.45;
+  /* Hőnyomtatón a vékony talpas betűk elmosódnak; talp nélküli, sűrű rajzolat kell. */
+  font-family: "DejaVu Sans", "Liberation Sans", Arial, Helvetica, sans-serif;
+}
+
+.receipt__head {
+  text-align: center;
+}
+
+.receipt__name {
+  margin: 0 0 3px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.receipt__line {
+  margin: 0;
+  color: var(--muted);
+}
+
+.receipt__rule {
+  margin: 6px 0;
+  border-top: 1px dashed var(--rule);
+}
+
+.receipt__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 2px;
+}
+
+.receipt__row span:last-child {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tételsorok */
+
+.receipt-item {
+  margin-bottom: 5px;
+}
+
+.receipt-item__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.receipt-item__amount {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.receipt-item__unit {
+  color: var(--muted);
+}
+
+/* Extra: külön sor, "+" jellel, saját árral. */
+.receipt-item__extra {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding-left: 8px;
+  color: var(--muted);
+}
+
+.receipt__totals .receipt__row--total {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.receipt__foot {
+  text-align: center;
+}
+
+.receipt__footer-message {
+  margin: 6px 0 0;
+  font-weight: 700;
+}
+
+/* ---------- Nyomtatás ---------- */
+
+/*
+ * Alapértelmezés 80 mm széles papír, margó nélkül. A pontos hosszt nyomtatás
+ * előtt a receipt-print.js írja felül a mért tartalommagassággal.
+ *
+ * A szabály szándékosan a @media print blokkon KÍVÜL van: a @page csak lapozott
+ * médiára vonatkozik, viszont a @media print-be ágyazva nem minden motor veszi
+ * figyelembe.
+ */
+@page {
+  size: 80mm 200mm;
+  margin: 0;
+}
+
+@media print {
+  body {
+    margin: 0;
+    padding: 0;
+    background: #ffffff;
+    color: #000000;
+  }
+
+  /* Az előnézet kerete nem kerül papírra. */
+  .screen-bar,
+  .screen-status,
+  .screen-error {
+    display: none !important;
+  }
+
+  .receipt {
+    width: 72mm;
+    margin: 0;
+  }
+
+  /* A blokkot ne törje szét a nyomtató oldalhatáron. */
+  .receipt-item,
+  .receipt__totals,
+  .receipt__foot {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
