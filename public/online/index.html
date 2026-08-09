@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="hu" data-interface="online">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Online rendelés</title>
+  <link rel="stylesheet" href="/assets/base.css">
+</head>
+<body class="is-centered">
+  <!-- Publikus felület: nincs bejelentkezés. -->
+  <main class="screen">
+    <p class="screen__eyebrow">And Order Here</p>
+    <h1 class="screen__title">Online rendelés — hamarosan</h1>
+    <p class="screen__note">
+      Ez a felület bejelentkezés nélkül, szabadon elérhető. Az étlap és a
+      rendelésfelvétel a következő szegmensekben készül el.
+    </p>
+    <p class="screen__note" data-api-status style="margin-top:16px"></p>
+
+    <p class="screen__note" style="margin-top:20px">
+      Élő csatorna (bejelentkezés nélkül), szobák: <code data-socket-rooms>—</code>
+    </p>
+    <ul class="event-log" data-event-log style="text-align:left">
+      <li class="event-log__empty">Még nem érkezett esemény.</li>
+    </ul>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/shared/socketEvents.js"></script>
+  <script src="/shared/socketClient.js"></script>
+  <script src="/shared/eventLog.js"></script>
+  <script>
+    // Publikus végpont: token nélkül is válaszol.
+    fetch('/api/online/status')
+      .then(function (response) { return response.json(); })
+      .then(function (data) {
+        document.querySelector('[data-api-status]').textContent = data.message;
+      })
+      .catch(function () {});
+
+    // Publikus felület: token nélkül, vendégként csatlakozunk az online szobába.
+    AndOrderEventLog.start();
+  </script>
+</body>
+</html>

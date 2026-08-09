@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="hu" data-interface="kitchen">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Konyhai munkapult</title>
+  <link rel="stylesheet" href="/assets/base.css">
+  <link rel="stylesheet" href="/kitchen/kitchen.css">
+</head>
+<body>
+  <!-- Bejelentkezés: PIN-kódos gyorsbelépés -->
+  <div class="auth-gate" data-auth-login hidden>
+    <div class="login">
+      <p class="login__eyebrow">And Order Here</p>
+      <h1 class="login__title">Szakács belépés</h1>
+
+      <p class="alert" data-auth-error hidden></p>
+
+      <label class="field">
+        <span class="field__label">Étterem</span>
+        <select class="field__input" data-auth-restaurant></select>
+      </label>
+
+      <div class="pin-display" data-auth-pin-display></div>
+      <div class="keypad" data-auth-keypad></div>
+
+      <p class="login__hint">Írd be a 4–6 jegyű PIN-kódodat.<br>Teszt PIN: 2345</p>
+    </div>
+  </div>
+
+  <!-- Bejelentkezés után -->
+  <div data-auth-app hidden>
+    <header class="topbar">
+      <div class="topbar__brand">
+        <h1 class="topbar__title">Konyhai munkapult</h1>
+        <span class="topbar__badge">cook</span>
+      </div>
+      <div class="topbar__user">
+        <span data-auth-user></span>
+        <button type="button" class="btn btn--ghost" data-auth-logout>Kilépés</button>
+      </div>
+    </header>
+
+    <main class="board-main">
+      <div class="board-bar">
+        <div class="board-counts">
+          <span class="count count--pending"><b data-count-pending>0</b> leadva</span>
+          <span class="count count--preparing"><b data-count-preparing>0</b> készül</span>
+          <span class="count count--ready"><b data-count-ready>0</b> elkészült</span>
+        </div>
+        <span class="board-bar__spacer"></span>
+        <button type="button" class="btn btn--ghost" data-sort-toggle>Legrégebbi elöl</button>
+        <button type="button" class="btn btn--ghost" data-board-refresh>Frissítés</button>
+      </div>
+
+      <p class="board-empty" data-board-empty hidden>
+        Nincs elkészítendő étel. Az új rendelések maguktól megjelennek itt.
+      </p>
+
+      <div class="board" data-board></div>
+    </main>
+  </div>
+
+  <p class="toast" data-toast hidden></p>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/shared/constants.js"></script>
+  <script src="/shared/socketEvents.js"></script>
+  <script src="/shared/socketClient.js"></script>
+  <script src="/shared/auth.js"></script>
+  <script src="/kitchen/app.js"></script>
+</body>
+</html>

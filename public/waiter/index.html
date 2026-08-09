@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="hu" data-interface="waiter">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pincér felület</title>
+  <link rel="stylesheet" href="/assets/base.css">
+  <link rel="stylesheet" href="/waiter/waiter.css">
+</head>
+<body>
+  <!-- Bejelentkezés: PIN-kódos gyorsbelépés -->
+  <div class="auth-gate" data-auth-login hidden>
+    <div class="login">
+      <p class="login__eyebrow">And Order Here</p>
+      <h1 class="login__title">Pincér belépés</h1>
+
+      <p class="alert" data-auth-error hidden></p>
+
+      <label class="field">
+        <span class="field__label">Étterem</span>
+        <select class="field__input" data-auth-restaurant></select>
+      </label>
+
+      <div class="pin-display" data-auth-pin-display></div>
+      <div class="keypad" data-auth-keypad></div>
+
+      <p class="login__hint">Írd be a 4–6 jegyű PIN-kódodat.<br>Teszt PIN: 1234</p>
+    </div>
+  </div>
+
+  <!-- Bejelentkezés után -->
+  <div data-auth-app hidden>
+    <header class="topbar">
+      <div class="topbar__brand">
+        <h1 class="topbar__title">Asztaltérkép</h1>
+        <span class="topbar__badge">waiter</span>
+      </div>
+      <div class="topbar__user">
+        <span data-auth-user></span>
+        <button type="button" class="btn btn--ghost" data-auth-logout>Kilépés</button>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <section class="card">
+        <div class="floor-toolbar">
+          <button type="button" class="btn btn--ghost btn--sm" data-map-refresh>Frissítés</button>
+          <button type="button" class="btn btn--ghost btn--sm" data-sound-toggle aria-pressed="true">🔔 Hang: be</button>
+          <span class="floor-toolbar__spacer"></span>
+          <div class="zoom-group">
+            <button type="button" class="btn btn--ghost btn--icon-sq" data-map-zoom-out aria-label="Kicsinyítés">−</button>
+            <span class="zoom-group__value" data-map-zoom-value>100%</span>
+            <button type="button" class="btn btn--ghost btn--icon-sq" data-map-zoom-in aria-label="Nagyítás">+</button>
+            <button type="button" class="btn btn--ghost btn--sm" data-map-zoom-fit>Illesztés</button>
+          </div>
+        </div>
+
+        <div class="map-frame" data-map-frame>
+          <canvas class="map-canvas" data-map-canvas></canvas>
+          <p class="map-empty" data-map-empty hidden>
+            Még nincs asztal az étteremhez. Az elrendezést az admin felület
+            Asztaltérkép fülén lehet kialakítani.
+          </p>
+
+          <!-- Asztalra / autó ikonra kattintva megnyíló menü -->
+          <div class="map-menu" data-map-menu hidden>
+            <p class="map-menu__title" data-menu-title></p>
+            <p class="map-menu__meta" data-menu-meta></p>
+            <div class="map-menu__actions">
+              <button type="button" class="btn btn--sm" data-menu-order>Rendelés felvétele</button>
+              <button type="button" class="btn btn--ghost btn--sm" data-menu-status hidden>Rendelés áttekintése</button>
+              <button type="button" class="btn btn--ghost btn--sm" data-menu-reserve>Asztal lefoglalása</button>
+              <button type="button" class="btn btn--ghost btn--sm" data-menu-close>Bezárás</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="legend">
+          <span class="legend__item"><span class="legend__swatch legend__swatch--free"></span> szabad</span>
+          <span class="legend__item"><span class="legend__swatch legend__swatch--ordering"></span> rendelés alatt</span>
+          <span class="legend__item"><span class="legend__swatch legend__swatch--bill"></span> számlát kért</span>
+          <span class="legend__item">🕐 lefoglalva</span>
+          <span class="legend__item"><span class="legend__swatch legend__swatch--ready"></span> elkészült étel vár</span>
+          <span class="legend__item"><span class="legend__swatch legend__swatch--zone"></span> zóna · 🚗 online rendelés</span>
+          <span class="legend__item" data-map-summary></span>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Foglalás -->
+  <div class="dialog" data-reserve-dialog hidden>
+    <div class="dialog__box">
+      <h2 class="dialog__title">Asztal lefoglalása</h2>
+      <p class="dialog__note" data-reserve-table></p>
+
+      <form data-reserve-form novalidate>
+        <label class="field" data-field="reservedFrom">
+          <span class="field__label">Kezdés *</span>
+          <input class="field__input" type="datetime-local" name="reservedFrom" required>
+          <span class="field__error"></span>
+        </label>
+
+        <div class="field-row">
+          <label class="field" data-field="duration">
+            <span class="field__label">Időtartam</span>
+            <select class="field__input" name="duration">
+              <option value="60">1 óra</option>
+              <option value="90" selected>1,5 óra</option>
+              <option value="120">2 óra</option>
+              <option value="180">3 óra</option>
+            </select>
+            <span class="field__error"></span>
+          </label>
+          <label class="field" data-field="reservedTo">
+            <span class="field__label">Vége</span>
+            <input class="field__input" type="datetime-local" name="reservedTo">
+            <span class="field__error"></span>
+          </label>
+        </div>
+
+        <label class="field" data-field="comment">
+          <span class="field__label">Megjegyzés</span>
+          <input class="field__input" name="comment" placeholder="pl. 4 fő, Kovács">
+          <span class="field__error"></span>
+        </label>
+
+        <div class="dialog__actions">
+          <button class="btn" type="submit">Foglalás</button>
+          <button class="btn btn--ghost" type="button" data-reserve-cancel>Mégse</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- Rendelésfelvétel -->
+  <div class="order-view" data-order-view hidden>
+    <header class="order-head">
+      <div>
+        <h2 class="order-head__title" data-order-title>Rendelésfelvétel</h2>
+        <p class="order-head__meta" data-order-meta></p>
+      </div>
+      <div class="order-head__actions">
+        <button type="button" class="btn btn--ghost btn--inline" data-order-status>Áttekintés</button>
+        <button type="button" class="btn btn--ghost btn--inline" data-order-close>Vissza a térképhez</button>
+      </div>
+    </header>
+
+    <div class="order-body">
+      <!-- Étlap -->
+      <section class="menu-pane">
+        <div class="menu-tabs" data-menu-tabs></div>
+        <div class="menu-grid" data-menu-grid></div>
+      </section>
+
+      <!-- Kosár -->
+      <aside class="cart-pane">
+        <div class="cart-section" data-existing-section hidden>
+          <h3 class="cart-section__title">Már leadva</h3>
+          <ul class="existing-list" data-existing-list></ul>
+        </div>
+
+        <div class="cart-section" style="border-bottom:none;padding-bottom:0">
+          <h3 class="cart-section__title">Kosár</h3>
+        </div>
+        <ul class="cart-list" data-cart-list>
+          <li class="cart-empty">Válassz tételt az étlapról.</li>
+        </ul>
+
+        <div class="cart-foot">
+          <div class="cart-total">
+            <span>Kosár összesen</span>
+            <span class="cart-total__value" data-cart-total>0 Ft</span>
+          </div>
+          <button type="button" class="btn btn--lg" data-cart-submit disabled>Rendelés leadása</button>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- Rendelés áttekintése: élő státuszkövetés és kiszolgálás -->
+  <div class="order-view status-view" data-status-view hidden>
+    <header class="order-head">
+      <div>
+        <h2 class="order-head__title" data-status-title>Rendelés áttekintése</h2>
+        <p class="order-head__meta" data-status-meta></p>
+      </div>
+      <div class="order-head__actions">
+        <button type="button" class="btn btn--inline" data-status-serve-all hidden>Mindet kiszolgáltam</button>
+        <button type="button" class="btn btn--ghost btn--inline" data-status-print disabled>Nyomtatás</button>
+        <button type="button" class="btn btn--ghost btn--inline" data-status-order>Új tétel</button>
+        <button type="button" class="btn btn--ghost btn--inline" data-status-close>Vissza a térképhez</button>
+      </div>
+    </header>
+
+    <div class="status-body">
+      <div data-status-groups></div>
+      <p class="status-empty" data-status-empty hidden>
+        Ehhez az asztalhoz még nincs leadott tétel.
+      </p>
+    </div>
+
+    <footer class="status-foot">
+      <span>Rendelés összesen</span>
+      <span class="cart-total__value" data-status-total>0 Ft</span>
+    </footer>
+  </div>
+
+  <!-- Tétel testreszabása -->
+  <div class="dialog" data-customize-dialog hidden>
+    <div class="dialog__box dialog__box--wide">
+      <p class="customize__item" data-customize-name></p>
+      <p class="customize__price" data-customize-base></p>
+
+      <span class="field__label">Mennyiség</span>
+      <div class="qty">
+        <button type="button" class="qty__btn" data-qty-minus aria-label="Kevesebb">−</button>
+        <span class="qty__value" data-qty-value>1</span>
+        <button type="button" class="qty__btn" data-qty-plus aria-label="Több">+</button>
+      </div>
+
+      <label class="field">
+        <span class="field__label">Megjegyzés</span>
+        <input class="field__input" data-customize-comment placeholder="pl. kevés sóval, allergia">
+      </label>
+
+      <div class="field" data-extras-field>
+        <span class="field__label">Kiegészítők</span>
+        <div class="extras-list" data-extras-list></div>
+      </div>
+
+      <div class="cart-total" style="margin-top:16px">
+        <span>Tétel összesen</span>
+        <span class="cart-total__value" data-customize-total>0 Ft</span>
+      </div>
+
+      <div class="dialog__actions">
+        <button type="button" class="btn" data-customize-confirm>Kosárba</button>
+        <button type="button" class="btn btn--ghost" data-customize-cancel>Mégse</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sikeres leadás -->
+  <div class="order-done" data-order-done hidden>
+    <div class="order-done__box">
+      <div class="order-done__check">✓</div>
+      <p class="order-done__title" data-order-done-title>Rendelés leadva</p>
+      <p class="order-done__note" data-order-done-note></p>
+    </div>
+  </div>
+
+  <p class="toast" data-toast hidden></p>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/shared/socketEvents.js"></script>
+  <script src="/shared/socketClient.js"></script>
+  <script src="/shared/auth.js"></script>
+  <script src="/waiter/floorMap.js"></script>
+  <script src="/waiter/order.js"></script>
+  <script src="/waiter/orderStatus.js"></script>
+  <script src="/waiter/app.js"></script>
+</body>
+</html>

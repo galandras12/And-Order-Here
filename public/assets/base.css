@@ -1,0 +1,574 @@
+/*
+ * Kozos alap stilus mind az 5 felulethez.
+ *
+ * Alapertelmezes: sotet (fekete) tema, hogy a vegleges design erre epulhessen.
+ * Feluletenkent a --accent (es a logisztikanal a teljes vilagos tema) a
+ * data-interface attributummal all at - lasd a fajl aljan.
+ */
+:root {
+  --bg: #000000;
+  --surface: #0e0e10;
+  --surface-2: #17171a;
+  --border: #232327;
+  --text: #f2f2f3;
+  --text-muted: #8b8b93;
+  --accent: #e0a340;
+  --accent-contrast: #000000;
+  --danger: #ff6b6b;
+  --radius: 10px;
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/*
+ * A hidden attributumot semmilyen display szabaly ne irja felul - a bejelentkezes
+ * es a felulet valtasa ezen mulik (pl. .field { display: block } egyebkent
+ * eltakarna a bongeszo alapertelmezett [hidden] szabalyat).
+ */
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* Kozepre igazitott egyoldalas nezet (placeholder es bejelentkezes) */
+body.is-centered {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.screen {
+  width: 100%;
+  max-width: 640px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 40px 32px;
+  text-align: center;
+}
+
+.screen__eyebrow {
+  margin: 0 0 12px;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.screen__title {
+  margin: 0 0 12px;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.screen__note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.screen__links {
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.screen__links a {
+  display: block;
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.screen__links a:hover,
+.screen__links a:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ---------- Bejelentkezes ---------- */
+
+/* A bejelentkezo kepernyo a teljes ablakot kitolti es kozepre igazit. */
+.auth-gate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.auth-gate[hidden] {
+  display: none;
+}
+
+.login {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 32px 28px;
+}
+
+.login__eyebrow {
+  margin: 0 0 6px;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+  text-align: center;
+}
+
+.login__title {
+  margin: 0 0 24px;
+  font-size: 22px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.field {
+  display: block;
+  margin-bottom: 16px;
+}
+
+.field__label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.field__input {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 15px;
+}
+
+.field__input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.btn {
+  display: inline-block;
+  width: 100%;
+  padding: 13px 18px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn--ghost {
+  width: auto;
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border);
+  font-weight: 500;
+}
+
+.btn--ghost:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  filter: none;
+}
+
+.alert {
+  margin: 0 0 16px;
+  padding: 11px 14px;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  background: rgba(255, 107, 107, 0.08);
+  color: var(--danger);
+  font-size: 14px;
+}
+
+.alert[hidden] {
+  display: none;
+}
+
+.login__hint {
+  margin: 18px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+/* ---------- PIN billentyuzet ---------- */
+
+.pin-display {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 22px;
+  min-height: 26px;
+}
+
+.pin-display__dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+}
+
+.pin-display__dot.is-filled {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.keypad__key {
+  padding: 18px 0;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 22px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.keypad__key:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.keypad__key:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.keypad__key--action {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.keypad__key--confirm {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+}
+
+/* ---------- Bejelentkezes utani vaz ---------- */
+
+.app-shell[hidden],
+.login[hidden] {
+  display: none;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar__brand {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.topbar__title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.topbar__badge {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.topbar__user {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.app-main {
+  padding: 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  margin-bottom: 20px;
+}
+
+.card__title {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.card__note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.data-table th,
+.data-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.data-table th {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.tag--on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tag--off {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* ---------- Esemenynaplo ---------- */
+
+.event-log {
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.event-log__row {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  padding: 7px 0;
+  border-top: 1px solid var(--border);
+}
+
+.event-log__time {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  flex: none;
+}
+
+.event-log__name {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--accent);
+}
+
+.event-log__detail {
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.event-log__empty {
+  padding: 7px 0;
+  color: var(--text-muted);
+}
+
+/* ---------- Valos ideju kapcsolat allapotjelzo ---------- */
+
+.conn-status {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 100;
+  /* Csak allapotjelzo: soha ne nyelje el a mogotte levo gomb erinteset
+     (pl. a rendelesfelvetel "Rendeles leadasa" gombjat). */
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--text-muted);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+}
+
+.conn-status__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex: none;
+}
+
+.conn-status.is-connected .conn-status__dot {
+  background: #35c46a;
+  box-shadow: 0 0 0 3px rgba(53, 196, 106, 0.18);
+}
+
+.conn-status.is-connected .conn-status__text {
+  color: #35c46a;
+}
+
+.conn-status.is-disconnected .conn-status__dot {
+  background: var(--danger);
+  box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.18);
+}
+
+.conn-status.is-disconnected .conn-status__text {
+  color: var(--danger);
+}
+
+.conn-status.is-connecting .conn-status__dot {
+  background: #f2c744;
+  animation: conn-pulse 1.2s ease-in-out infinite;
+}
+
+.conn-status__event:not(:empty) {
+  padding-left: 8px;
+  border-left: 1px solid var(--border);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+@keyframes conn-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .conn-status.is-connecting .conn-status__dot {
+    animation: none;
+  }
+}
+
+/* ---------- Feluletenkenti szinvilag ---------- */
+
+[data-interface='waiter'] {
+  --accent: #35c46a; /* pincer: zold */
+  --accent-contrast: #04140a;
+}
+
+[data-interface='kitchen'] {
+  --accent: #f2c744; /* szakacs: sarga */
+  --accent-contrast: #171200;
+}
+
+[data-interface='admin'] {
+  --accent: #4a9eff; /* admin: kek */
+  --accent-contrast: #00101f;
+}
+
+/* logisztika: vilagos (feher) tema */
+[data-interface='logistics'] {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --surface-2: #f0f1f4;
+  --border: #d8dade;
+  --text: #16181d;
+  --text-muted: #62666f;
+  --accent: #1f2937;
+  --accent-contrast: #ffffff;
+  --danger: #c62828;
+}
+
+[data-interface='online'] {
+  --accent: #e0a340; /* online: publikus felulet, alapertelmezett kiemeles */
+  --accent-contrast: #1a1200;
+}
