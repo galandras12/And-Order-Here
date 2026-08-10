@@ -17,5 +17,6 @@ module.exports = {
   reservationRepository: require('./reservationRepository'),
   orderRepository: require('./orderRepository'),
   orderItemRepository: require('./orderItemRepository'),
-  paymentRepository: require('./paymentRepository')
+  paymentRepository: require('./paymentRepository'),
+  cashClosingRepository: require('./cashClosingRepository')
 };

@@ -114,29 +114,12 @@ function getOrderTotals(restaurantId, orderId) {
 }
 
 /**
- * A blokk adatcsomagja.
+ * A blokk osszeallitasa a mar betoltott adatokbol.
  *
- * @param {string} restaurantId
- * @param {string} orderId
- * @param {Date} [issuedAt] a kiallitas idopontja (alapertelmezes: most)
- * @throws {NotFoundError} ha a rendeles nem az etteremhez tartozik
- * @throws {ConflictError} ha meg van ki nem szolgalt tetel
+ * Kulon fuggveny, hogy a nyomtatasi es az utolagos (logisztikai) nezet
+ * ugyanabbol a formabol dolgozzon, es a betoltes se ismetlodjon meg.
  */
-function getReceipt(restaurantId, orderId, issuedAt = new Date()) {
-  const { order, restaurant, storedItems, items: receiptItems, totals } =
-    getOrderTotals(restaurantId, orderId);
-
-  // A blokk csak lezart asztalrol keszulhet: amig keszul vagy kint van etel,
-  // a vegosszeg meg valtozhat.
-  const pending = storedItems.filter((item) => item.status !== ORDER_ITEM_STATUS.SERVED);
-  if (!storedItems.length || pending.length) {
-    throw new ConflictError(
-      'A blokk csak akkor nyomtatható, ha a rendelés minden tétele kiszolgálásra került.',
-      'order_not_served',
-      { itemCount: storedItems.length, notServedCount: pending.length }
-    );
-  }
-
+function buildReceipt({ order, restaurant, items: receiptItems, totals }, issuedAt) {
   const table = order.tableId ? tableRepository.findById(order.tableId) : null;
   const waiter = order.waiterId ? userRepository.findById(order.waiterId) : null;
 
@@ -163,4 +146,46 @@ function getReceipt(restaurantId, orderId, issuedAt = new Date()) {
   };
 }
 
-module.exports = { getReceipt, getOrderTotals, calculateTotals };
+/**
+ * A blokk adatcsomagja nyomtatashoz.
+ *
+ * @param {string} restaurantId
+ * @param {string} orderId
+ * @param {Date} [issuedAt] a kiallitas idopontja (alapertelmezes: most)
+ * @throws {NotFoundError} ha a rendeles nem az etteremhez tartozik
+ * @throws {ConflictError} ha meg van ki nem szolgalt tetel
+ */
+function getReceipt(restaurantId, orderId, issuedAt = new Date()) {
+  const loaded = getOrderTotals(restaurantId, orderId);
+
+  // A blokk csak lezart asztalrol keszulhet: amig keszul vagy kint van etel,
+  // a vegosszeg meg valtozhat.
+  const pending = loaded.storedItems.filter((item) => item.status !== ORDER_ITEM_STATUS.SERVED);
+  if (!loaded.storedItems.length || pending.length) {
+    throw new ConflictError(
+      'A blokk csak akkor nyomtatható, ha a rendelés minden tétele kiszolgálásra került.',
+      'order_not_served',
+      { itemCount: loaded.storedItems.length, notServedCount: pending.length }
+    );
+  }
+
+  return buildReceipt(loaded, issuedAt);
+}
+
+/**
+ * Ugyanaz a blokk, a kiszolgalasi feltetel ellenorzese **nelkul**.
+ *
+ * A logisztikai archivum (13. szegmens) hasznalja: egy regi - akar meg le sem
+ * zart - rendeles utolagos visszakeresesehez, ahol nem nyomtatunk, csak
+ * olvashatoan megmutatjuk a blokkot.
+ *
+ * @param {string} restaurantId
+ * @param {string} orderId
+ * @param {Date} [issuedAt]
+ * @throws {NotFoundError} ha a rendeles nem az etteremhez tartozik
+ */
+function getReceiptView(restaurantId, orderId, issuedAt = new Date()) {
+  return buildReceipt(getOrderTotals(restaurantId, orderId), issuedAt);
+}
+
+module.exports = { getReceipt, getReceiptView, getOrderTotals, calculateTotals };

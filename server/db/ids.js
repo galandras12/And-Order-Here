@@ -26,7 +26,8 @@ const ID_PREFIX = {
   reservations: 'rsv',
   orders: 'ord',
   orderItems: 'oit',
-  payments: 'pay'
+  payments: 'pay',
+  cashClosings: 'ccl'
 };
 
 module.exports = { newId, ID_PREFIX };

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Logisztikai felület</title>
   <link rel="stylesheet" href="/assets/base.css">
+  <link rel="stylesheet" href="/logistics/logistics.css">
 </head>
 <body>
   <!-- Bejelentkezés: email + jelszó -->
@@ -44,54 +45,308 @@
       </div>
     </header>
 
-    <main class="app-main">
-      <section class="card">
-        <h2 class="card__title">Készlet és beszerzés — hamarosan</h2>
-        <p class="card__note">
-          A belépés és a jogosultságkezelés készen van: innentől a
-          <code>/api/logistics/*</code> végpontok csak logisztika szerepkörrel érhetők el.
-          A funkciók a következő szegmensben készülnek el.
-        </p>
+    <nav class="logi-nav" data-logi-nav>
+      <button type="button" class="logi-nav__tab is-active" data-tab="dashboard">Áttekintés</button>
+      <button type="button" class="logi-nav__tab" data-tab="orders">Blokk-archívum</button>
+      <button type="button" class="logi-nav__tab" data-tab="closing">Napi zárás</button>
+    </nav>
+
+    <main class="app-main app-main--wide">
+
+      <!-- ================= A) Forgalmi összesítő ================= -->
+      <section class="logi-panel" data-panel="dashboard">
+        <form class="range-bar" data-summary-range novalidate>
+          <label class="field field--inline" data-field="dateFrom">
+            <span class="field__label">Kezdő dátum</span>
+            <input class="field__input" type="date" name="dateFrom">
+            <span class="field__error"></span>
+          </label>
+          <label class="field field--inline" data-field="dateTo">
+            <span class="field__label">Záró dátum</span>
+            <input class="field__input" type="date" name="dateTo">
+            <span class="field__error"></span>
+          </label>
+          <div class="range-bar__actions">
+            <button class="btn btn--inline" type="submit">Szűrés</button>
+            <button class="btn btn--ghost btn--inline" type="button" data-preset="today">Ma</button>
+            <button class="btn btn--ghost btn--inline" type="button" data-preset="yesterday">Tegnap</button>
+            <button class="btn btn--ghost btn--inline" type="button" data-preset="week">7 nap</button>
+            <button class="btn btn--ghost btn--inline" type="button" data-preset="month">30 nap</button>
+          </div>
+        </form>
+
+        <p class="range-note" data-summary-caption>Betöltés…</p>
+
+        <div class="stat-grid">
+          <article class="stat stat--strong">
+            <p class="stat__label">Bevétel</p>
+            <p class="stat__value" data-stat-revenue>—</p>
+            <p class="stat__note" data-stat-revenue-note></p>
+          </article>
+          <article class="stat">
+            <p class="stat__label">Rendelések</p>
+            <p class="stat__value" data-stat-orders>—</p>
+            <p class="stat__note" data-stat-orders-note></p>
+          </article>
+          <article class="stat">
+            <p class="stat__label">Helyszíni</p>
+            <p class="stat__value" data-stat-dinein>—</p>
+            <p class="stat__note">asztalnál felvett rendelés</p>
+          </article>
+          <article class="stat">
+            <p class="stat__label">Online</p>
+            <p class="stat__value" data-stat-online>—</p>
+            <p class="stat__note">vendégoldalról érkezett</p>
+          </article>
+          <article class="stat stat--warn" data-stat-unpaid-card>
+            <p class="stat__label">Kifizetetlen</p>
+            <p class="stat__value" data-stat-unpaid>—</p>
+            <p class="stat__note" data-stat-unpaid-note></p>
+          </article>
+        </div>
+
+        <div class="card">
+          <h2 class="card__title">Fizetési mód szerinti bontás</h2>
+          <p class="card__note">
+            A fizetés rögzítésének időpontja szerint. A sáv hossza az adott mód
+            részesedését mutatja az időszak bevételéből.
+          </p>
+          <div class="table-wrap">
+            <table class="data-table data-table--bars">
+              <thead>
+                <tr>
+                  <th>Fizetési mód</th>
+                  <th class="col-num">Összeg</th>
+                  <th class="col-num">Darab</th>
+                  <th class="col-num">Arány</th>
+                  <th class="col-bar">Megoszlás</th>
+                </tr>
+              </thead>
+              <tbody data-method-body>
+                <tr><td colspan="5">Betöltés…</td></tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Összesen</th>
+                  <th class="col-num" data-method-total>—</th>
+                  <th class="col-num" data-method-count>—</th>
+                  <th class="col-num"></th>
+                  <th class="col-bar"></th>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
       </section>
 
-      <section class="card">
-        <h2 class="card__title">API kapcsolat</h2>
-        <p class="card__note" data-api-status>Ellenőrzés…</p>
+      <!-- ================= B) Blokk-archívum ================= -->
+      <section class="logi-panel" data-panel="orders" hidden>
+        <form class="filter-bar" data-orders-filter novalidate>
+          <label class="field field--inline" data-field="dateFrom">
+            <span class="field__label">Kezdő dátum</span>
+            <input class="field__input" type="date" name="dateFrom">
+            <span class="field__error"></span>
+          </label>
+          <label class="field field--inline" data-field="dateTo">
+            <span class="field__label">Záró dátum</span>
+            <input class="field__input" type="date" name="dateTo">
+            <span class="field__error"></span>
+          </label>
+          <label class="field field--inline" data-field="type">
+            <span class="field__label">Típus</span>
+            <select class="field__input" name="type">
+              <option value="">Mind</option>
+              <option value="dine_in">Helyszíni</option>
+              <option value="online">Online</option>
+            </select>
+          </label>
+          <label class="field field--inline" data-field="tableId">
+            <span class="field__label">Asztal</span>
+            <select class="field__input" name="tableId" data-filter-tables>
+              <option value="">Mind</option>
+            </select>
+          </label>
+          <label class="field field--inline" data-field="waiterId">
+            <span class="field__label">Pincér</span>
+            <select class="field__input" name="waiterId" data-filter-waiters>
+              <option value="">Mind</option>
+            </select>
+          </label>
+          <label class="field field--inline" data-field="paymentMethod">
+            <span class="field__label">Fizetési mód</span>
+            <select class="field__input" name="paymentMethod" data-filter-methods>
+              <option value="">Mind</option>
+            </select>
+          </label>
+          <label class="field field--inline" data-field="paymentStatus">
+            <span class="field__label">Fizetettség</span>
+            <select class="field__input" name="paymentStatus">
+              <option value="">Mind</option>
+              <option value="paid">Fizetve</option>
+              <option value="unpaid">Nincs fizetve</option>
+            </select>
+          </label>
+          <label class="field field--inline field--narrow" data-field="limit">
+            <span class="field__label">Sor / oldal</span>
+            <select class="field__input" name="limit">
+              <option value="10">10</option>
+              <option value="25" selected>25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </label>
+          <div class="filter-bar__actions">
+            <button class="btn btn--inline" type="submit">Szűrés</button>
+            <button class="btn btn--ghost btn--inline" type="button" data-orders-reset>Alaphelyzet</button>
+          </div>
+        </form>
+
+        <div class="card">
+          <div class="card__head">
+            <h2 class="card__title">Rendelések</h2>
+            <p class="card__note" data-orders-caption></p>
+          </div>
+
+          <div class="table-wrap">
+            <table class="data-table data-table--rows">
+              <thead>
+                <tr>
+                  <th>Azonosító</th>
+                  <th>Dátum / idő</th>
+                  <th>Asztal / vendég</th>
+                  <th>Pincér</th>
+                  <th class="col-num">Végösszeg</th>
+                  <th>Fizetési mód</th>
+                  <th>Állapot</th>
+                </tr>
+              </thead>
+              <tbody data-orders-body>
+                <tr><td colspan="7">Betöltés…</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="pager" data-orders-pager hidden>
+            <button class="btn btn--ghost btn--inline" type="button" data-page-prev>Előző</button>
+            <span class="pager__label" data-page-label></span>
+            <button class="btn btn--ghost btn--inline" type="button" data-page-next>Következő</button>
+          </div>
+        </div>
       </section>
 
-      <section class="card">
-        <h2 class="card__title">Valós idejű események</h2>
-        <p class="card__note">
-          A beérkező események a böngésző konzoljában is naplózódnak.
-          Szobák: <code data-socket-rooms>—</code>
-        </p>
-        <ul class="event-log" data-event-log>
-          <li class="event-log__empty">Még nem érkezett esemény.</li>
-        </ul>
+      <!-- ================= C) Napi zárás ================= -->
+      <section class="logi-panel" data-panel="closing" hidden>
+        <form class="range-bar" data-closing-range novalidate>
+          <label class="field field--inline" data-field="dateFrom">
+            <span class="field__label">Időszak kezdete</span>
+            <input class="field__input" type="date" name="dateFrom">
+            <span class="field__error"></span>
+          </label>
+          <label class="field field--inline" data-field="dateTo">
+            <span class="field__label">Időszak vége</span>
+            <input class="field__input" type="date" name="dateTo">
+            <span class="field__error"></span>
+          </label>
+          <div class="range-bar__actions">
+            <button class="btn btn--inline" type="submit">Időszak betöltése</button>
+            <button class="btn btn--ghost btn--inline" type="button" data-preset="today">Ma</button>
+            <button class="btn btn--ghost btn--inline" type="button" data-preset="yesterday">Tegnap</button>
+          </div>
+        </form>
+
+        <div class="card">
+          <h2 class="card__title">Kasszazárás</h2>
+          <p class="card__note">
+            A várt egyenleg a készpénzes és utólagos ATM-es fizetésekből számolódik,
+            a fizetés rögzítésének időpontja szerint. A leszámolt összeget te írod be —
+            az eltérést a rendszer számolja és rögzíti.
+          </p>
+
+          <div class="closing-grid">
+            <div class="closing-box">
+              <p class="closing-box__label">Rendszer szerint várt készpénz</p>
+              <p class="closing-box__value" data-closing-expected>—</p>
+              <ul class="closing-breakdown" data-closing-breakdown></ul>
+            </div>
+
+            <form class="closing-form" data-closing-form novalidate>
+              <label class="field" data-field="actualAmount">
+                <span class="field__label">Ténylegesen leszámolt összeg (Ft) *</span>
+                <input class="field__input" name="actualAmount" type="number" min="0" step="1"
+                       inputmode="numeric" autocomplete="off" required>
+                <span class="field__error"></span>
+              </label>
+
+              <div class="closing-diff" data-closing-diff-box>
+                <span class="closing-diff__label">Eltérés</span>
+                <span class="closing-diff__value" data-closing-diff>—</span>
+              </div>
+
+              <label class="field" data-field="note">
+                <span class="field__label">Jegyzet</span>
+                <input class="field__input" name="note" maxlength="500"
+                       placeholder="pl. váltópénz hiány, borravaló kivét">
+                <span class="field__error"></span>
+              </label>
+
+              <p class="closing-warning" data-closing-existing hidden></p>
+
+              <button class="btn btn--inline" type="submit">Zárás rögzítése</button>
+            </form>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 class="card__title">Korábbi zárások</h2>
+          <p class="card__note">A zárások utólag nem módosíthatók — a lista a teljes történetet mutatja.</p>
+          <div class="table-wrap">
+            <table class="data-table data-table--rows">
+              <thead>
+                <tr>
+                  <th>Időszak</th>
+                  <th>Zárva</th>
+                  <th class="col-num">Várt</th>
+                  <th class="col-num">Tényleges</th>
+                  <th class="col-num">Eltérés</th>
+                  <th>Zárta</th>
+                  <th>Jegyzet</th>
+                </tr>
+              </thead>
+              <tbody data-closing-body>
+                <tr><td colspan="7">Betöltés…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </section>
+
     </main>
   </div>
 
+  <!-- B/5) Rendelés részletei: a nyomtatási sablon olvasható változata -->
+  <div class="drawer" data-order-drawer hidden>
+    <div class="drawer__backdrop" data-drawer-close></div>
+    <aside class="drawer__panel" role="dialog" aria-modal="true" aria-label="Rendelés részletei">
+      <header class="drawer__head">
+        <h2 class="drawer__title" data-drawer-title>Rendelés</h2>
+        <button type="button" class="btn btn--ghost btn--inline" data-drawer-close>Bezárás</button>
+      </header>
+      <div class="drawer__body" data-drawer-body>
+        <p class="card__note">Betöltés…</p>
+      </div>
+    </aside>
+  </div>
+
+  <p class="toast" data-toast hidden></p>
+
   <script src="/socket.io/socket.io.js"></script>
+  <script src="/shared/constants.js"></script>
   <script src="/shared/socketEvents.js"></script>
   <script src="/shared/socketClient.js"></script>
   <script src="/shared/auth.js"></script>
-  <script src="/shared/eventLog.js"></script>
-  <script>
-    AndOrderAuth.init({
-      interface: 'logistics',
-      mode: 'password',
-      // Rövidebb munkamenet: a lap bezárásával törlődik a token.
-      storage: 'session',
-      role: 'logistics',
-      onLogin: function () {
-        AndOrderAuth.request('/api/logistics/status').then(function (data) {
-          document.querySelector('[data-api-status]').textContent = data.message;
-        });
-        // Valós idejű csatorna a bejelentkezéskor kapott tokennel.
-        AndOrderEventLog.start({ token: AndOrderAuth.getToken() });
-      }
-    });
-  </script>
+  <script src="/logistics/app.js"></script>
+  <script src="/logistics/dashboard.js"></script>
+  <script src="/logistics/orders.js"></script>
+  <script src="/logistics/closing.js"></script>
 </body>
 </html>

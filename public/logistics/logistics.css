@@ -1,0 +1,694 @@
+/*
+ * Logisztikai felulet - feher-fekete, adatkozpontu megjelenes.
+ *
+ * A szinpalettat a base.css adja ([data-interface='logistics']): vilagos hatter,
+ * fekete szoveg, szurke keretek. Itt szandekosan nincs erős szin - a hangsuly a
+ * szamokon es a tablazatok olvashatosagan van, nem a latvanyon. Az egyetlen
+ * kiemeles a piros (elteres, kifizetetlen) es a zold (rendben levo egyenleg),
+ * mert ezeket egy pillantasbol kell eszrevenni.
+ *
+ * Fo hasznalati eset: asztali gep / tablet (ulomunka). Kisebb kepernyon a
+ * tablazatok vizszintesen gorgethetok, a szurosav pedig egymas ala rendezodik -
+ * a felulet hasznalhato marad, csak keskenyebb.
+ */
+
+/* ---------- Vaz ---------- */
+
+/* Adatkozpontu nezet: szelesebb, mint az alapertelmezett 1100px. */
+.app-main--wide {
+  max-width: 1400px;
+}
+
+.logi-nav {
+  display: flex;
+  gap: 4px;
+  padding: 0 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.logi-nav__tab {
+  padding: 13px 18px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.logi-nav__tab:hover {
+  color: var(--text);
+}
+
+.logi-nav__tab.is-active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.logi-panel[hidden] {
+  display: none;
+}
+
+/* ---------- Urlap elemek ---------- */
+
+.btn--inline {
+  width: auto;
+  padding: 10px 20px;
+}
+
+.field--error .field__input {
+  border-color: var(--danger);
+}
+
+.field__error {
+  display: block;
+  margin-top: 5px;
+  color: var(--danger);
+  font-size: 12px;
+}
+
+/* Szurosorba valo, keskeny mezo. */
+.field--inline {
+  margin-bottom: 0;
+  min-width: 150px;
+}
+
+/* Rovid ertekhez (oldalmeret) valo, keskenyebb mezo. */
+.field--narrow {
+  min-width: 92px;
+  flex: 0 0 auto;
+}
+
+.field--inline .field__input {
+  padding: 9px 11px;
+  font-size: 14px;
+}
+
+/* Idoszak- es szurosav: egy sorban, kis kepernyon tordelve. */
+.range-bar,
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 16px 18px;
+  margin-bottom: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.range-bar__actions,
+.filter-bar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.range-note {
+  margin: -8px 0 20px;
+  padding: 0 2px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* ---------- Osszesito kartyak ---------- */
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.stat {
+  padding: 18px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+/* A bevetel a legfontosabb szam: sotet hatteren, nagyobb betuvel. */
+.stat--strong {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.stat__label {
+  margin: 0 0 8px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.stat--strong .stat__label,
+.stat--strong .stat__note {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.stat__value {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.stat--strong .stat__value {
+  font-size: 30px;
+}
+
+.stat__note {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Kifizetetlen tetelek: csak akkor pirosodik ki, ha tenyleg van. */
+.stat--warn.is-alert {
+  border-color: var(--danger);
+  background: rgba(198, 40, 40, 0.06);
+}
+
+.stat--warn.is-alert .stat__value {
+  color: var(--danger);
+}
+
+/* ---------- Tablazatok ---------- */
+
+.card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.card__head .card__title {
+  margin: 0;
+}
+
+.data-table .col-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.data-table .col-strong {
+  font-weight: 600;
+}
+
+/*
+ * Az osszesito sor nem fejlec: a base.css th szabalya (halvany, kicsi,
+ * nagybetus) itt olvashatatlanna tenne a legfontosabb szamot.
+ */
+.data-table tfoot th {
+  border-bottom: none;
+  border-top: 2px solid var(--border);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.data-table .col-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.data-table .col-note {
+  max-width: 260px;
+  white-space: normal;
+}
+
+.data-table__message {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.data-table--rows tbody tr:hover {
+  background: var(--surface-2);
+}
+
+.data-table tr.is-clickable {
+  cursor: pointer;
+}
+
+.data-table tr.is-clickable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* A nulla forgalmu fizetesi modok halvanyabbak, de lathatok maradnak. */
+.data-table--bars tr.is-empty {
+  color: var(--text-muted);
+}
+
+.data-table td .cell-sub {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.data-table td .tag {
+  margin-right: 4px;
+}
+
+.data-table .is-match {
+  color: #1b7a3d;
+}
+
+.data-table .is-over {
+  color: #8a6100;
+}
+
+.data-table .is-short {
+  color: var(--danger);
+}
+
+/* Savdiagram a fizetesi mod szerinti bontashoz. */
+.col-bar {
+  width: 34%;
+  min-width: 140px;
+}
+
+.bar {
+  display: block;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.bar__fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+/* ---------- Allapotcimkek ---------- */
+
+.badge {
+  display: inline-block;
+  padding: 2px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.badge--paid {
+  border-color: #1b7a3d;
+  color: #1b7a3d;
+}
+
+.badge--unpaid {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.badge--online {
+  border-color: var(--accent);
+  color: var(--accent);
+  margin-right: 6px;
+}
+
+.badge--cancelled {
+  border-color: var(--text-muted);
+  color: var(--text-muted);
+  margin-left: 6px;
+}
+
+/* ---------- Lapozo ---------- */
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.pager[hidden] {
+  display: none;
+}
+
+.pager__label {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Napi zaras ---------- */
+
+.closing-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(280px, 1.2fr);
+  align-items: start;
+  gap: 20px;
+  margin-top: 18px;
+}
+
+.closing-box {
+  padding: 18px 20px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.closing-box__label {
+  margin: 0 0 6px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.closing-box__value {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.closing-breakdown {
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.closing-breakdown li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.closing-form .field {
+  margin-bottom: 14px;
+}
+
+/* Az elteres kiemelten, hogy a rogzites elott feltunjon. */
+.closing-diff {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  margin-bottom: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.closing-diff__label {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.closing-diff__value {
+  font-size: 22px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.closing-diff.is-match {
+  border-color: #1b7a3d;
+}
+
+.closing-diff.is-match .closing-diff__value {
+  color: #1b7a3d;
+}
+
+.closing-diff.is-over {
+  border-color: #8a6100;
+}
+
+.closing-diff.is-over .closing-diff__value {
+  color: #8a6100;
+}
+
+.closing-diff.is-short {
+  border-color: var(--danger);
+}
+
+.closing-diff.is-short .closing-diff__value {
+  color: var(--danger);
+}
+
+.closing-warning {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.closing-warning[hidden] {
+  display: none;
+}
+
+/* ---------- Rendeles reszletei (oldalso panel) ---------- */
+
+.drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.drawer[hidden] {
+  display: none;
+}
+
+.drawer__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 12, 16, 0.45);
+}
+
+.drawer__panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(460px, 100%);
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.18);
+}
+
+.drawer__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.drawer__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.drawer__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+/*
+ * A blokk olvashato valtozata: ugyanaz a felepites, mint a 10. szegmens
+ * nyomtatasi sablonjaban (fejlec - tetelek - osszesites - lablec), de kepernyore
+ * meretezve. Nyomtatasra itt nincs szukseg: ez az utolagos ellenorzes nezete.
+ */
+.receipt-view {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.receipt-view__head {
+  text-align: center;
+  padding-bottom: 14px;
+}
+
+.receipt-view__name {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.receipt-view__line {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.receipt-view__subtitle {
+  margin: 0 0 8px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.receipt-view__block {
+  padding: 14px 0;
+  border-top: 1px dashed var(--border);
+}
+
+.receipt-view__item + .receipt-view__item {
+  margin-top: 12px;
+}
+
+.receipt-view__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 0 0 3px;
+  font-variant-numeric: tabular-nums;
+}
+
+.receipt-view__row--extra {
+  color: var(--text-muted);
+  font-size: 13px;
+  padding-left: 12px;
+}
+
+.receipt-view__row--total {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.receipt-view__row--due {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.receipt-view__unit {
+  margin: 0 0 3px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.receipt-view__foot {
+  padding-top: 14px;
+  border-top: 1px dashed var(--border);
+  text-align: center;
+}
+
+/* ---------- Visszajelzes ---------- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 200;
+  /* Csak visszajelzes: soha ne nyelje el a mogotte levo elem kattintasat. */
+  pointer-events: none;
+  max-width: min(520px, calc(100vw - 32px));
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 14px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+}
+
+.toast--error {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.toast[hidden] {
+  display: none;
+}
+
+/* ---------- Kisebb kepernyo (tablet allo, mobil) ---------- */
+
+@media (max-width: 900px) {
+  .closing-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .topbar,
+  .logi-nav {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .app-main {
+    padding: 16px;
+  }
+
+  .card {
+    padding: 18px 16px;
+  }
+
+  .range-bar,
+  .filter-bar {
+    padding: 14px;
+  }
+
+  .field--inline {
+    min-width: 0;
+    flex: 1 1 140px;
+  }
+
+  .range-bar__actions,
+  .filter-bar__actions {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .stat__value {
+    font-size: 22px;
+  }
+
+  .stat--strong .stat__value {
+    font-size: 26px;
+  }
+
+  /* A savdiagram oszlopa keskeny kijelzon csak zajt vinne a tablazatba. */
+  .col-bar,
+  .data-table--bars th.col-bar,
+  .data-table--bars td.col-bar {
+    display: none;
+  }
+
+  .drawer__panel {
+    width: 100%;
+  }
+}

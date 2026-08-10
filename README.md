@@ -24,9 +24,10 @@ JWT-alapú bejelentkezés, natív HTML/CSS/JavaScript kliensek — külső front
 keretrendszer nélkül. Eddig a projektváz, az adattárolási réteg, az
 autentikáció, a valós idejű réteg, az admin menükezelés, az asztaltérkép-
 szerkesztő, a pincér élő asztaltérképe, a rendelésfelvétel, az élő
-státuszkövetés, a konyhai munkapult, a blokknyomtatás, az online vendégfelület
-és a fizetési folyamat készült el; a logisztika és a készletkezelés a következő
-szegmensekben jön.
+státuszkövetés, a konyhai munkapult, a blokknyomtatás, az online vendégfelület,
+a fizetési folyamat és a logisztikai pénzügyi áttekintő (forgalmi összesítő,
+blokk-archívum, napi kasszazárás) készült el; a készletkezelés és a beszerzés a
+következő szegmensekben jön.
 
 ## Indítás
 
@@ -102,7 +103,13 @@ fut (`npm run dev` ugyanez, `node --watch` automatikus újraindítással).
 | `GET/POST /api/admin/zones` | csak `admin` — zónák |
 | `PUT/DELETE /api/admin/zones/:id` | csak `admin` |
 | `GET /api/admin/users` | csak `admin` |
-| `GET /api/logistics/*` | csak `logistics` |
+| `GET /api/logistics/summary` | `logistics` vagy `admin` — forgalmi összesítő (`dateFrom`, `dateTo`) |
+| `GET /api/logistics/orders` | ugyanaz — blokk-archívum, szűrhető és lapozható |
+| `GET /api/logistics/orders/:id` | ugyanaz — a blokk olvasható változata + fizetések |
+| `GET /api/logistics/filter-options` | ugyanaz — asztalok, pincérek, fizetési módok a szűrőhöz |
+| `GET /api/logistics/cash-closing` | ugyanaz — korábbi kasszazárások |
+| `GET /api/logistics/cash-closing/preview` | ugyanaz — a rendszer által várt készpénz |
+| `POST /api/logistics/cash-closing` | ugyanaz — zárás rögzítése |
 | `GET /api/online/restaurant` | publikus — a vendégnek szóló alapadatok (név, cím, telefon) |
 | `GET /api/online/menu` | publikus — kategóriák és csak elérhető tételek |
 | `GET /api/online/extras` | publikus — kiegészítők |
@@ -254,6 +261,10 @@ server/
     floorStateService.js  asztalállapotok és online összesítő (pincér nézet)
     reservationService.js foglalás validációval és ütközés-ellenőrzéssel
     orderService.js       rendelésfelvétel: étlap, kosár validáció, leadás
+    kitchenService.js     konyhai munkapult: ételblokkok, állapotléptetés
+    receiptService.js     vendégblokk összeállítása (ÁFA, szervizdíj, végösszeg)
+    paymentService.js     fizetés rögzítése, fizetettségi állapot, lezárás
+    logisticsService.js   forgalmi összesítő, blokk-archívum, kasszazárás
   middleware/
     requireAuth.js  JWT ellenőrzés az Authorization fejlécből
     requireRole.js  szerepkör szerinti szűrés
@@ -274,7 +285,13 @@ server/
   config.js     .env alapú konfiguráció
   index.js      belépési pont
 public/
-  logistics/   felületenkénti statikus fájlok
+  logistics/
+    index.html  fülek: áttekintés, blokk-archívum, napi zárás
+    app.js      közös mag: fülek, API hívás, dátum- és pénzformázás
+    dashboard.js  forgalmi összesítő kártyák és mód szerinti bontás
+    orders.js     szűrhető archívum + olvasható blokk oldalsó panelen
+    closing.js    kasszazárás: várt egyenleg, eltérés, korábbi zárások
+    logistics.css fehér-fekete, adatközpontú stílus
   online/
     index.html  vendég étlap, kosár, visszaigazolás
     app.js      menü, kosár, leadás, téma váltás
@@ -582,6 +599,80 @@ jelölt **„Fizetés a helyszínen (készpénz vagy ATM)"** opció. Kártyás/S
 választásnál a felület jelzi, hogy **szimulált** visszaigazolásról van szó.
 Sikeres rögzítés után a vendég visszaigazolást lát: rendelés azonosító, fizetett
 összeg és fizetési mód.
+
+## Logisztika — pénzügyi áttekintő
+
+A `/logistics` felület három fület kapott: **Áttekintés**, **Blokk-archívum**,
+**Napi zárás**. Fehér-fekete, adatközpontú megjelenés — a hangsúly az
+olvashatóságon van, nem a látványon. Fő használati eset asztali gép/tablet, de
+kisebb kijelzőn is használható marad (a táblázatok vízszintesen görgethetők).
+
+A felület **nem tárol új pénzügyi adatot**: minden szám a meglévő `orders`,
+`orderItems` és `payments` kollekciókból számolódik, a repository rétegen
+keresztül. A végösszegek ugyanazzal a `receiptService` logikával készülnek, mint
+a kinyomtatott blokk — így egy utólagos ellenőrzésnél biztosan ugyanaz jön ki.
+
+**Két időbélyeg, két kérdés.** Az időszak szűrése szándékosan nem egyetlen
+dátumra épül:
+
+- a **pénzügyi** számok (bevétel, fizetési mód szerinti bontás, kasszazárás) a
+  fizetés rögzítésének időpontja (`payments.paidAt`) szerint — ez az, ami aznap
+  ténylegesen befolyt;
+- a **darabszámok** (rendelések típus szerint, kifizetetlenek) a rendelés
+  felvételének időpontja (`orders.createdAt`) szerint — ez az, amit aznap
+  felvettek.
+
+Egy előző nap felvett, de ma kifizetett rendelés így a mai bevételben, de a
+tegnapi rendelésszámban jelenik meg. A felület a fejlécben kiírja ezt, hogy ne
+lehessen félreérteni. A napok határai **helyi idő** szerint képződnek (nem UTC):
+a „mai nap" az étteremben dolgozó ember napja.
+
+### Áttekintés
+
+Összesítő kártyák (bevétel, rendelésszám, helyszíni/online bontás, kifizetetlen
+összeg) és a fizetési mód szerinti bontás táblázatban, egyszerű sávdiagrammal —
+rajzoló könyvtár nélkül, hogy nyomtatásban és nagyítva is olvasható maradjon. A
+dátumtartomány-választó mellett gyors gombok: *Ma*, *Tegnap*, *7 nap*, *30 nap*.
+
+A kifizetetlen kártya csak akkor kap piros kiemelést, ha tényleg van behajtani
+való; az összeg a **hátralékot** mutatja, nem a teljes végösszeget (részfizetés
+esetén ez nem ugyanaz). Tétel nélküli rendelés nem kerül a figyelmeztetésbe.
+
+A logisztikai felület megkapja a fizetéskor kiváltott `order:payment_recorded`
+eseményt, így a nyitva hagyott áttekintő újratöltés nélkül frissül.
+
+### Blokk-archívum
+
+Szűrhető, lapozható rendeléslista: időszak, típus (helyszíni/online), asztal,
+pincér, fizetési mód, fizetettség, sor/oldal. Egy sorra kattintva (vagy Enterrel)
+oldalsó panelen nyílik a rendelés részletes nézete: a **10. szegmens nyomtatási
+sablonjának olvasható változata** — ugyanaz az adat és felépítés (fejléc,
+tételek extrákkal, összesítés, lábléc), de képernyőre szánva, nyomtatás nélkül.
+Alatta a rögzített fizetések listája, és — ha van — a hátralék.
+
+Itt a kiszolgálási feltétel nem érvényes: egy még le sem zárt rendelés blokkja is
+megnézhető (a `receiptService.getReceiptView` ugyanazt állítja össze, mint a
+`getReceipt`, csak az ellenőrzés nélkül). Nyomtatni innen nem kell — ez az
+utólagos ellenőrzés nézete.
+
+### Napi zárás
+
+A rendszer kiszámolja a **várt készpénz-egyenleget** (a `cash` és `atm_later`
+módú fizetésekből az adott időszakra), a munkatárs beírja a **ténylegesen
+leszámolt** összeget, az eltérés pedig gépelés közben, azonnal látszik —
+egyezésnél zölden, hiánynál pirosan, többletnél külön jelöléssel.
+
+A várt összeget **mindig a szerver számolja újra**: a kliens csak a leszámolt
+összeget és a jegyzetet küldi, így a rögzített eltérés nem hamisítható. A zárás
+a `cashClosings` kollekcióba kerül, és nem módosítja a rendeléseket vagy a
+fizetéseket — csak egy pillanatkép az egyeztetésről. Ugyanarra a napra több
+zárás is rögzíthető (délelőtti és délutáni műszak); ha már van, a felület jelzi,
+de nem tiltja. A korábbi zárások lent, teljes történettel listázódnak.
+
+Egy megjegyzés a számításról: a várt egyenleg a **rögzített fizetésekből** dolgozik,
+nem a „teljesen kifizetett rendelésekből". Ha egy asztal felig kártyával, felig
+készpénzzel fizetett, a készpénzes rész akkor is a fiókban van, ha a rendelés
+maga még nincs teljesen rendezve.
 
 ## Valós idejű réteg (Socket.io)
 

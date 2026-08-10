@@ -43,7 +43,10 @@
     RESERVATIONS: 'reservations',
     ORDERS: 'orders',
     ORDER_ITEMS: 'orderItems',
-    PAYMENTS: 'payments'
+    PAYMENTS: 'payments',
+    // Napi kasszazarasok (13. szegmens): a rendszer altal szamolt es a
+    // munkatars altal leszamolt keszpenz egyeztetese.
+    CASH_CLOSINGS: 'cashClosings'
   };
 
   /** Rendeles tipusa: helyben fogyasztas vagy online rendeles. */

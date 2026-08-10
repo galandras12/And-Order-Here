@@ -18,7 +18,8 @@ mezőt.
   "reservations": [],
   "orders": [],
   "orderItems": [],
-  "payments": []
+  "payments": [],
+  "cashClosings": []
 }
 ```
 
@@ -45,7 +46,12 @@ orders
 │   ├── menuItems    (orderItems.menuItemId)
 │   └── extras       (orderItems.extraIds[] — id-tömb, nem kapcsolótábla)
 └── payments         (payments.orderId)
+
+cashClosings         (cashClosings.restaurantId, closedByUserId → users.id)
 ```
+
+A `cashClosings` szándékosan nem kapcsolódik egyetlen rendeléshez vagy
+fizetéshez sem: egy **időszakot** dokumentál, nem tranzakciókat.
 
 ## Kollekciók
 
@@ -225,6 +231,33 @@ Egy rendeléshez több fizetés is tartozhat (részfizetés, megosztott számla)
 ezért az összeget mindig összegezve kell nézni:
 `paymentRepository.getTotalPaid(orderId)`.
 
+### cashClosings
+
+| Mező | Típus | Leírás |
+| --- | --- | --- |
+| `id` | string | `ccl_…` |
+| `restaurantId` | string → `restaurants.id` | |
+| `dateFrom` | string (`ÉÉÉÉ-HH-NN`) | a lezárt időszak első napja |
+| `dateTo` | string (`ÉÉÉÉ-HH-NN`) | a lezárt időszak utolsó napja |
+| `expectedAmount` | number | a rendszer által várt készpénz (Ft) |
+| `actualAmount` | number | a munkatárs által leszámolt összeg (Ft) |
+| `difference` | number | `actualAmount - expectedAmount` (negatív = hiány) |
+| `closedByUserId` | string → `users.id` \| null | ki zárta |
+| `closedAt` | string (ISO 8601) | a zárás időpontja |
+| `note` | string | szabad szöveges megjegyzés |
+
+Napi (vagy műszakonkénti) kasszazárás: a rendszer által számolt és a ténylegesen
+leszámolt készpénz egyeztetése. A várt összeget mindig a szerver számolja
+(`logisticsService`) a `cash` és `atm_later` módú, az időszakban rögzített
+fizetésekből — a kliens csak a leszámolt összeget küldi.
+
+A `difference` **tárolt** mező, nem számolt: a zárás pillanatának dokumentuma,
+ami később sem változhat meg, akkor sem, ha utólag kerül be fizetés az adott
+napra. A zárás nem módosít rendelést vagy fizetést, és ugyanarra a napra több
+zárás is rögzíthető (délelőtti és délutáni műszak).
+
+### Rendelés-lezárás
+
 A `paid` és a `cancelled` állapot zárja a rendelést; minden más — a
 `bill_requested` is — nyitottnak számít. Az asztaltérkép állapotát ebből
 számolja a `floorStateService`: `bill_requested` → „számlát kért",
@@ -291,6 +324,11 @@ A fájl `schemaVersion` mezője jelzi, melyik séma szerint készült. Indulásk
 | 5 | `orders.receiptNumber` — a régi rendelések is kapnak egyedi hatjegyű azonosítót, hogy a blokkjuk nyomtatható legyen |
 | 6 | `orders.guestName` — az online vendégfelülethez; a korábbi rendeléseknél `null` |
 | 7 | `orders.paymentStatus` — a fizetettségi állapot; a korábbi rendelések a már rögzített fizetéseik alapján kapják meg |
+
+A `cashClosings` kollekció (13. szegmens) **nem igényelt verzióemelést**: új,
+üres kollekcióhoz nem tartozik adatátalakítás, a `normalizeData` a meglévő
+fájlban is létrehozza. Verziót csak akkor kell emelni, ha meglévő rekordokat
+kell átírni vagy hiányzó mezőt kell visszamenőleg feltölteni.
 
 Új migrációhoz: emeld a `SCHEMA_VERSION` értékét, és vedd fel a hozzá tartozó
 függvényt a `MIGRATIONS` objektumba.
