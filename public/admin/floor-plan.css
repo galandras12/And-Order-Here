@@ -256,8 +256,50 @@
   background: rgba(120, 200, 180, 0.18);
 }
 
-@media (max-width: 900px) {
+/* ---------- Töréspontok (15. szegmens) ---------- */
+
+/*
+ * Figyelmeztetés kis kijelzőn: alapból rejtve, és csak ott jelenik meg, ahol
+ * tényleg számít - keskeny **és** érintős kijelzőn. Egy keskenyre húzott
+ * asztali ablakban felesleges lenne.
+ */
+.small-screen-hint {
+  display: none;
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.55;
+}
+
+.small-screen-hint strong {
+  color: var(--text);
+}
+
+/* Kis laptop / tablet fekvő: a szerkesztő és az oldalsó panel egymás alá. */
+@media (max-width: 1024px) {
   .floor-layout {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) and (pointer: coarse) {
+  .small-screen-hint {
+    display: block;
+  }
+}
+
+/* Mobil: a vászon alacsonyabb, hogy az oldalsó panel is elérhető maradjon. */
+@media (max-width: 480px) {
+  .floor-canvas-wrap {
+    height: 52vh;
+  }
+
+  .floor-toolbar__hint {
+    font-size: var(--text-xs);
   }
 }

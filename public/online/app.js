@@ -832,19 +832,33 @@
     });
   }
 
+  /**
+   * Az etlap es az etterem adatainak betoltese.
+   *
+   * Hiba eseten a vendeg nem ures kepernyot lat, hanem egy magyarazatot es egy
+   * ujraprobalkozas gombot - mobilinterneten ez rendszeresen szukseges.
+   */
+  function loadAll() {
+    return Promise.all([loadRestaurant(), loadMenu()])
+      .then(function () {
+        state.cart = loadCart();
+        renderCart();
+        window.AndOrderUiState.clear('[data-load-error]');
+      })
+      .catch(function (err) {
+        window.AndOrderUiState.error('[data-load-error]', err, {
+          title: 'Az étlap nem tölthető be.',
+          retry: loadAll
+        });
+      });
+  }
+
   function start() {
     setTheme(currentTheme());
     setupControls();
     setupSocket();
 
-    Promise.all([loadRestaurant(), loadMenu()])
-      .then(function () {
-        state.cart = loadCart();
-        renderCart();
-      })
-      .catch(function (err) {
-        toast(err.message || 'Az étlap betöltése nem sikerült.', true);
-      });
+    loadAll();
   }
 
   if (document.readyState === 'loading') {
@@ -854,5 +868,11 @@
   }
 
   // Fejlesztői konzolból és automatizált ellenőrzéskor is lekérdezhető állapot.
-  window.AndOrderOnline = { state: state, loadMenu: loadMenu, renderCart: renderCart };
+  window.AndOrderOnline = {
+    state: state,
+    loadMenu: loadMenu,
+    // Teljes ujratoltes hibaallapot utan (a hibadoboz gombja is ezt hivja).
+    reload: loadAll,
+    renderCart: renderCart
+  };
 })(window, document);

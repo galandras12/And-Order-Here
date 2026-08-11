@@ -39,9 +39,18 @@
         loaded[name] = true;
       }
 
-      return Promise.resolve(handler.load(force)).catch(function (err) {
-        app.toast(err.message, true);
-      });
+      return Promise.resolve(handler.load(force))
+        .then(function (result) {
+          window.AndOrderUiState.clear('[data-load-error]');
+          return result;
+        })
+        .catch(function (err) {
+          window.AndOrderUiState.error('[data-load-error]', err, {
+            title: 'Az adatok betöltése nem sikerült.',
+            retry: function () { return app.loadPanel(name, true); }
+          });
+          app.toast(err.message, true);
+        });
     },
 
     /* ---------- API ---------- */
@@ -214,11 +223,24 @@
 
     /* ---------- tablazat ---------- */
 
-    /** Szoveges cella. */
-    cell: function (text, className) {
+    /**
+     * Szoveges cella.
+     *
+     * A `label` a mobil kartyas nezethez kell: keskeny kijelzon a tablazat
+     * fejlece eltunik, es minden cella a sajat cimkejet viszi magaval
+     * (`data-label`, a CSS `::before`-bol irja ki).
+     */
+    cell: function (text, className, label) {
       var td = document.createElement('td');
       td.textContent = text === null || text === undefined || text === '' ? '—' : String(text);
       if (className) td.className = className;
+      if (label) td.dataset.label = label;
+      return td;
+    },
+
+    /** Cimke rakasa egy mar kesz cellara (a kartyas nezethez). */
+    labelled: function (td, label) {
+      td.dataset.label = label;
       return td;
     },
 

@@ -42,6 +42,15 @@
     </header>
 
     <main class="app-main">
+  <!-- Közös betöltési hibaállapot: megmarad, és újrapróbálkozást kínál. -->
+  <div class="state-box" data-load-error hidden>
+    <p class="state-box__text">
+      <span class="state-box__title"></span>
+      <span class="state-box__detail"></span>
+    </p>
+    <button type="button" class="state-box__retry">Újrapróbálom</button>
+  </div>
+
       <section class="card">
         <div class="floor-toolbar">
           <button type="button" class="btn btn--ghost btn--sm" data-map-refresh>Frissítés</button>
@@ -298,6 +307,7 @@
   <script src="/shared/socketEvents.js"></script>
   <script src="/shared/socketClient.js"></script>
   <script src="/shared/auth.js"></script>
+  <script src="/shared/uiState.js"></script>
   <script src="/waiter/floorMap.js"></script>
   <script src="/waiter/order.js"></script>
   <script src="/waiter/orderStatus.js"></script>

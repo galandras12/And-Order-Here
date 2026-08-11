@@ -148,7 +148,7 @@
   background: var(--surface);
   border: 1px solid var(--accent);
   border-radius: var(--radius);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+  box-shadow: var(--shadow-lg);
 }
 
 .map-menu[hidden] {
@@ -267,7 +267,7 @@
   background: var(--surface);
   color: var(--text);
   font-size: 14px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--shadow-md);
   /* Csak visszajelzes: ne nyelje el a vaszon erinteseit. */
   pointer-events: none;
 }
@@ -283,7 +283,14 @@
 
 /* ---------- Mobil ---------- */
 
-@media (max-width: 720px) {
+/* ---------- Töréspontok (15. szegmens) ----------
+ *
+ * A pincér felület alapesete a tablet (fekvő), ezért az alapértelmezett
+ * elrendezés kétoszlopos. Lefelé szűkítünk: 1024 px alatt a kosár a menü alá
+ * kerül, 480 px alatt pedig alsó lebegő sávvá zsugorodik.
+ */
+
+@media (max-width: 768px) {
   .app-main {
     padding: 14px;
   }
@@ -471,6 +478,8 @@
 .cart-list {
   flex: 1;
   overflow-y: auto;
+  /* A lista vegen ne kezdje el a lap gorgeteset (mobil "scroll chaining"). */
+  overscroll-behavior: contain;
   padding: 6px 16px;
   margin: 0;
   list-style: none;
@@ -944,7 +953,7 @@
 
 /* Mobil / kisebb tablet: a kosár a lap aljára kerül */
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .order-body {
     grid-template-columns: 1fr;
     grid-template-rows: minmax(0, 1fr) auto;
@@ -980,6 +989,70 @@
 
   .status-body {
     padding: 8px 12px 16px;
+  }
+}
+
+/*
+ * Mobil: a kosár alsó lebegő sávvá zsugorodik.
+ *
+ * Telefonon a fél képernyőt elfoglaló kosárpanel elvenné a helyet az étlaptól,
+ * ezért itt alacsonyabb: a tétellista magán belül görgethető, a végösszeg és a
+ * "Rendelés leadása" gomb pedig mindig látszik a sáv alján. A felső árnyék
+ * jelzi, hogy a sáv a tartalom fölött lebeg.
+ */
+@media (max-width: 480px) {
+  .order-head {
+    padding: 12px 14px;
+  }
+
+  .order-head__title {
+    font-size: 16px;
+  }
+
+  .menu-tabs {
+    padding: 10px 12px;
+    /* A fülek vízszintesen görgethetők, és a kijelző széléig futnak. */
+    scroll-padding-inline: 12px;
+  }
+
+  .menu-tab {
+    padding: 11px 16px;
+    font-size: 14px;
+  }
+
+  .menu-grid {
+    padding: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+    gap: 10px;
+  }
+
+  .menu-card {
+    min-height: 92px;
+    padding: 12px;
+  }
+
+  .cart-pane {
+    max-height: 38vh;
+    box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.4);
+  }
+
+  /* A már leadott tételek szakasza összecsukott magasságú, de görgethető. */
+  .cart-pane [data-existing-section] {
+    max-height: 26vh;
+    overflow-y: auto;
+  }
+
+  .cart-section {
+    padding: 10px 12px;
+  }
+
+  .cart-foot {
+    padding: 12px;
+  }
+
+  .status-body {
+    padding-left: 12px;
+    padding-right: 12px;
   }
 }
 

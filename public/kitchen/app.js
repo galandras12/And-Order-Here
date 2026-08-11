@@ -281,9 +281,16 @@
         state.blocks = data.blocks || [];
         state.counts = data.counts || {};
         render();
+        window.AndOrderUiState.clear('[data-load-error]');
         return data;
       })
       .catch(function (err) {
+        // A konyhaban senki nem nezi a kepernyot folyamatosan: a hibauzenet
+        // maradjon kint, amig valaki ujra nem probalja.
+        window.AndOrderUiState.error('[data-load-error]', err, {
+          title: 'A konyhai munkapult nem tölthető be.',
+          retry: load
+        });
         toast(err.message, true);
       });
   }

@@ -144,13 +144,14 @@
       row.setAttribute('role', 'button');
       row.setAttribute('aria-label', 'Rendelés részletei: ' + (order.receiptNumber || order.id));
 
-      row.appendChild(app.cell(order.receiptNumber || order.id, 'col-id'));
-      row.appendChild(app.cell(app.dateTime(order.createdAt), 'col-time'));
-      row.appendChild(whoCell(order));
-      row.appendChild(app.cell(order.waiterName, 'col-waiter'));
-      row.appendChild(app.cell(app.money(order.total), 'col-num col-strong'));
-      row.appendChild(methodsCell(order));
-      row.appendChild(statusCell(order));
+      // A cimkek a mobil kartyas nezetben a fejlec helyett jelennek meg.
+      row.appendChild(app.cell(order.receiptNumber || order.id, 'col-id', 'Azonosító'));
+      row.appendChild(app.cell(app.dateTime(order.createdAt), 'col-time', 'Dátum / idő'));
+      row.appendChild(app.labelled(whoCell(order), 'Asztal / vendég'));
+      row.appendChild(app.cell(order.waiterName, 'col-waiter', 'Pincér'));
+      row.appendChild(app.cell(app.money(order.total), 'col-num col-strong', 'Végösszeg'));
+      row.appendChild(app.labelled(methodsCell(order), 'Fizetési mód'));
+      row.appendChild(app.labelled(statusCell(order), 'Állapot'));
 
       body.appendChild(row);
     });

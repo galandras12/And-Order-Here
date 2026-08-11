@@ -26,8 +26,9 @@ autentikáció, a valós idejű réteg, az admin menükezelés, az asztaltérké
 szerkesztő, a pincér élő asztaltérképe, a rendelésfelvétel, az élő
 státuszkövetés, a konyhai munkapult, a blokknyomtatás, az online vendégfelület,
 a fizetési folyamat, a logisztikai pénzügyi áttekintő (forgalmi összesítő,
-blokk-archívum, napi kasszazárás) és a vezetőségi riportok készültek el; a
-készletkezelés és a beszerzés a következő szegmensekben jön.
+blokk-archívum, napi kasszazárás), a vezetőségi riportok, valamint a teljes
+reszponzív és design-finomhangolás készült el; a készletkezelés és a beszerzés a
+következő szegmensekben jön.
 
 ## Indítás
 
@@ -327,6 +328,7 @@ public/
     auth.js         bejelentkezés, token tárolás, fetch wrapper
     socketClient.js Socket.io kapcsolat, újracsatlakozás, állapotjelző
     eventLog.js     beérkező események megjelenítése a felületen
+    uiState.js      közös betöltési és hibaállapot újrapróbálkozással
   assets/     közös CSS
   index.html  felületválasztó
 shared/
@@ -776,6 +778,118 @@ Egy megjegyzés a számításról: a várt egyenleg a **rögzített fizetésekb�
 nem a „teljesen kifizetett rendelésekből". Ha egy asztal felig kártyával, felig
 készpénzzel fizetett, a készpénzes rész akkor is a fiókban van, ha a rendelés
 maga még nincs teljesen rendezve.
+
+## Design és reszponzivitás
+
+A rendszer öt felülete **egy termék**: közös alapra épülnek, és csak a
+szerepkörhöz tartozó színkód különbözteti meg őket. Ezt a
+`public/assets/base.css` fogja össze — mind az öt felület ezt tölti be először,
+és utána teszi hozzá a sajátját.
+
+### Design-tokenek
+
+A base.css `:root` blokkja adja a **teljes skálát**: színek, tipográfia
+(`--text-xs` … `--text-2xl`), négyes léptékű térköz (`--space-1` … `--space-10`),
+lekerekítés (`--radius-sm` / `--radius` / `--radius-lg` / `--radius-pill`),
+árnyékok (`--shadow-sm` / `-md` / `-lg`) és az érintési célméret (`--tap-min`).
+A felületek a `data-interface` attribútumon keresztül csak a színeket írják
+felül:
+
+| Felület | Kiemelőszín | Téma |
+| --- | --- | --- |
+| pincér | zöld `#35c46a` | sötét |
+| szakács | sárga `#f2c744` | sötét |
+| admin | kék `#4a9eff` | sötét |
+| logisztika | grafit `#1f2937` | világos |
+| online | arany `#e0a340` | sötét, világos váltóval |
+
+A világos felületek az árnyék-tokeneket is felülírják: a sötét témára hangolt
+árnyék fehér háttéren piszkosnak látszana.
+
+### Töréspontok
+
+Egységesen három (plusz egy speciális). A CSS nem enged változót a `@media`
+feltételben, ezért ezek szó szerinti értékek — a base.css fejléce sorolja fel
+őket, hogy egy helyen legyen a hivatkozás:
+
+| Töréspont | Mire |
+| --- | --- |
+| `max-width: 480px` | mobil (álló telefon) |
+| `max-width: 768px` | tablet álló / nagy telefon |
+| `max-width: 1024px` | kis laptop / tablet fekvő |
+| `min-width: 1600px` | fali kijelző (csak a konyhai munkapult) |
+
+A felületek többsége mobil-first, **két kivétellel**: a pincér és a szakács
+felület alapesete a tablet, mert az a napi munkaeszköz — ott a mobil a szűkítés.
+
+Amit a töréspontok érdemben átrendeznek:
+
+- **Pincér** — 1024 px alatt a kosár a menü alá kerül; 480 px alatt alsó lebegő
+  sávvá zsugorodik: a tétellista magán belül görgethető, a végösszeg és a
+  „Rendelés leadása" gomb mindig látszik. A kategóriafülek vízszintesen
+  görgethetők.
+- **Szakács** — 768 px alatt egyoszlopos blokk-lista; 1600 px felett szélesebb
+  oszlopok és nagyobb betűk, hogy 2–3 méterről is olvasható legyen.
+- **Admin** — 1024 px alatt az asztaltérkép-szerkesztő és az oldalsó panel
+  egymás alá kerül. Keskeny **és érintős** kijelzőn figyelmeztetés jelenik meg,
+  hogy a pontos pozicionálás asztali gépen kényelmesebb — de a szerkesztő
+  használható marad, semmi nincs letiltva.
+- **Logisztika** — 480 px alatt a blokk-archívum táblázata **kártyás nézetre
+  vált**: minden sor egy kártya, a cellák a saját fejlécüket viszik magukkal
+  (`data-label`). A számokat összehasonlító táblázatok maradnak vízszintesen
+  görgethetők, mert ott az oszlopos olvasás a lényeg.
+- **Online** — 768 px felett az étlap több hasábra bomlik, a felcsúszó lap
+  párbeszédablakká szelídül; 1024 px felett a tartalom 1100 px-nél megáll (a
+  túl hosszú sor olvashatatlan), a lebegő kosár pedig a jobb alsó sarokba
+  húzódik.
+
+### Érintésbarát kezelés
+
+Ahol nincs pontos mutató (`@media (pointer: coarse)`), **minden** kattintható
+elem felhúzódik a 44 px-es ajánlott célméretre — gombok, legördülők, beviteli
+mezők egyaránt. Egérrel dolgozó gépen a sűrű admin- és logisztikai táblázatok
+megtarthatják a tömörebb sorokat.
+
+A Canvas-alapú nézetek saját gesztuskezelést kapnak: a pincér asztaltérképe
+egy ujjal pásztázható, két ujjal nagyítható (`touch-action: none`, mert ott a
+pásztázás az elsődleges művelet), az admin szerkesztőjében viszont a vászon
+fölött a lap görgethető marad (`pan-x pan-y`), és csak a megfogott asztal
+kapcsolja ki a görgetést. A belül görgethető panelek (kosár, felcsúszó lap,
+oldalsó panel) `overscroll-behavior: contain`-nel nem húzzák magukkal a lapot.
+
+### Betöltés, hiba, visszajelzés
+
+- **Betöltés**: skeleton helyőrzők (`.skeleton`) és `.spinner`, hogy ne ugráljon
+  az elrendezés az adat megérkezésekor. Csökkentett mozgás beállításnál az
+  animáció kikapcsol, de a helyőrző látszik.
+- **Hálózati hiba**: a `public/shared/uiState.js` egységes hibadobozt ad
+  **újrapróbálkozás gombbal**. Korábban minden felület máshogy jelzett — volt,
+  ahol csak egy pár másodpercre felvillanó toast, volt, ahol semmi. A hibaüzenet
+  most megmarad, amíg meg nem szűnik a hiba, és nem kell újratölteni a lapot.
+- **Kapcsolat-állapot**: ugyanaz a jelző mind az öt felületen. A személyzeti
+  felületeken folyamatosan látszik; a vendégoldalon **csak akkor jelenik meg, ha
+  megszakadt** a kapcsolat — az „élő kapcsolat" felirat a vendégnek nem mond
+  semmit, a megszakadt viszont igen. Mobilon a jelző ponttá zsugorodik, hogy ne
+  takarja a képernyő alján lévő fő gombot; hiba esetén viszont kiírja a szöveget.
+- **Űrlaphibák**: a `.field--error` / `.field__error` / `.field__hint` a
+  base.css-ben van, egy helyen — egy hibás ár az adminban ugyanúgy néz ki, mint
+  egy hibás összeg a kasszazárásnál.
+
+### Teljesítmény
+
+A socket-események **összevontan** frissítenek: a pincér felület 150 ms-on belül
+érkező eseményeit egyetlen újratöltéssé vonja össze (a konyhai munkapult
+ugyanígy), különben egy asztalnál több egyidejű eseményből minden egyes darab
+külön hálózati kérést és teljes Canvas-újrarajzolást indítana. Az ablak
+átméretezése `requestAnimationFrame`-re van kötve, így képkockánként legfeljebb
+egyszer rajzol újra.
+
+### Kézi tesztelés
+
+A `TESTING-CHECKLIST.md` eszközkategóriánként (mobil / tablet / asztali gép /
+fali kijelző) és felületenként sorolja fel a végleges átadás előtt
+végigjátszandó forgatókönyveket — beleértve a hálózati hiba és a valós idejű
+frissülés ellenőrzését is.
 
 ## Valós idejű réteg (Socket.io)
 

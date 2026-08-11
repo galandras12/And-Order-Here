@@ -35,6 +35,15 @@
 
   <nav class="tabs" data-menu-tabs aria-label="Kategóriák"></nav>
 
+  <!-- Közös betöltési hibaállapot: megmarad, és újrapróbálkozást kínál. -->
+  <div class="state-box" data-load-error hidden>
+    <p class="state-box__text">
+      <span class="state-box__title"></span>
+      <span class="state-box__detail"></span>
+    </p>
+    <button type="button" class="state-box__retry">Újrapróbálom</button>
+  </div>
+
   <main class="menu" data-menu-grid></main>
 
   <p class="empty-note" data-menu-empty hidden>
@@ -211,6 +220,7 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="/shared/socketEvents.js"></script>
   <script src="/shared/socketClient.js"></script>
+  <script src="/shared/uiState.js"></script>
   <script src="/online/app.js"></script>
 </body>
 </html>

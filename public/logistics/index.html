@@ -53,6 +53,15 @@
 
     <main class="app-main app-main--wide">
 
+  <!-- Közös betöltési hibaállapot: megmarad, és újrapróbálkozást kínál. -->
+  <div class="state-box" data-load-error hidden>
+    <p class="state-box__text">
+      <span class="state-box__title"></span>
+      <span class="state-box__detail"></span>
+    </p>
+    <button type="button" class="state-box__retry">Újrapróbálom</button>
+  </div>
+
       <!-- ================= A) Forgalmi összesítő ================= -->
       <section class="logi-panel" data-panel="dashboard">
         <form class="range-bar" data-summary-range novalidate>
@@ -208,7 +217,7 @@
           </div>
 
           <div class="table-wrap">
-            <table class="data-table data-table--rows">
+            <table class="data-table data-table--rows data-table--cards">
               <thead>
                 <tr>
                   <th>Azonosító</th>
@@ -344,6 +353,7 @@
   <script src="/shared/socketEvents.js"></script>
   <script src="/shared/socketClient.js"></script>
   <script src="/shared/auth.js"></script>
+  <script src="/shared/uiState.js"></script>
   <script src="/logistics/app.js"></script>
   <script src="/logistics/dashboard.js"></script>
   <script src="/logistics/orders.js"></script>

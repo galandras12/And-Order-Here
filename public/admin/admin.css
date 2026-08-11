@@ -56,24 +56,7 @@
   grid-template-columns: 1fr;
 }
 
-.field--error .field__input {
-  border-color: var(--danger);
-}
-
-.field__error {
-  display: block;
-  margin-top: 5px;
-  color: var(--danger);
-  font-size: 12px;
-  min-height: 0;
-}
-
-.field__hint {
-  display: block;
-  margin-top: 5px;
-  color: var(--text-muted);
-  font-size: 12px;
-}
+/* A .field--error / .field__error / .field__hint a kozos base.css-ben van. */
 
 .field__input--sm {
   padding: 8px 10px;
@@ -311,7 +294,7 @@ select.field__input {
   background: var(--surface);
   color: var(--text);
   font-size: 14px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--shadow-md);
 }
 
 .toast--error {
@@ -325,7 +308,10 @@ select.field__input {
 
 /* ---------- Mobil ---------- */
 
-@media (max-width: 720px) {
+/* ---------- Töréspontok (15. szegmens) ---------- */
+
+/* Tablet álló / nagy telefon. */
+@media (max-width: 768px) {
   .topbar,
   .admin-nav {
     padding-left: 16px;
@@ -566,7 +552,7 @@ select.field__input {
   font-weight: 600;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 768px) {
   .report-range__actions {
     margin-left: 0;
     width: 100%;
@@ -584,5 +570,45 @@ select.field__input {
 
   .rank-list__name {
     white-space: normal;
+  }
+}
+
+/* Mobil: tömörebb keretek, a diagram alacsonyabb, hogy elférjen a görgetésben. */
+@media (max-width: 480px) {
+  .app-main {
+    padding: 12px;
+  }
+
+  .card {
+    padding: 16px 14px;
+  }
+
+  .admin-nav__tab {
+    padding: 12px 14px;
+    font-size: 13px;
+  }
+
+  .section-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .chart__svg {
+    height: 150px;
+  }
+
+  /* Két számjegy is elfér, de a sűrű 3 óránkénti felirat összefolyna. */
+  .chart__label {
+    font-size: 10px;
+  }
+
+  .rank-list__row {
+    gap: 10px;
+  }
+
+  .report-range,
+  .form-actions {
+    gap: 8px;
   }
 }

@@ -58,6 +58,15 @@
 
     <main class="app-main">
 
+  <!-- Közös betöltési hibaállapot: megmarad, és újrapróbálkozást kínál. -->
+  <div class="state-box" data-load-error hidden>
+    <p class="state-box__text">
+      <span class="state-box__title"></span>
+      <span class="state-box__detail"></span>
+    </p>
+    <button type="button" class="state-box__retry">Újrapróbálom</button>
+  </div>
+
       <!-- A) Étterem alapadatok -->
       <section class="admin-panel" data-panel="restaurant">
         <div class="card">
@@ -282,6 +291,17 @@
 
       <!-- E) Asztaltérkép szerkesztő -->
       <section class="admin-panel" data-panel="floor" hidden>
+        <!--
+          Kis kijelzőn a finom pozicionálás nehézkes, de nem tiltjuk le:
+          a figyelmeztetés csak jelzi, hogy asztali gépen kényelmesebb.
+          A CSS csak érintőképernyős, keskeny nézetben mutatja meg.
+        -->
+        <p class="small-screen-hint" data-floor-small-screen-hint>
+          <strong>Kis kijelzőn vagy.</strong> A szerkesztő működik érintéssel is, de az asztalok
+          pontos elhelyezése asztali gépen, egérrel lényegesen kényelmesebb. Tipp: a kijelölt
+          asztal a nyílbillentyűkkel finomhangolható.
+        </p>
+
         <div class="card">
           <div class="floor-toolbar">
             <button class="btn btn--inline" type="button" data-floor-add-table>+ Új asztal</button>
@@ -572,6 +592,7 @@
   <script src="/shared/socketClient.js"></script>
   <script src="/shared/auth.js"></script>
   <script src="/shared/eventLog.js"></script>
+  <script src="/shared/uiState.js"></script>
   <!-- app.js definialja a kozos AdminApp magot, a tobbi modul erre epul -->
   <script src="/admin/app.js"></script>
   <script src="/admin/restaurant.js"></script>
