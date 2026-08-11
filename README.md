@@ -25,9 +25,9 @@ keretrendszer nélkül. Eddig a projektváz, az adattárolási réteg, az
 autentikáció, a valós idejű réteg, az admin menükezelés, az asztaltérkép-
 szerkesztő, a pincér élő asztaltérképe, a rendelésfelvétel, az élő
 státuszkövetés, a konyhai munkapult, a blokknyomtatás, az online vendégfelület,
-a fizetési folyamat és a logisztikai pénzügyi áttekintő (forgalmi összesítő,
-blokk-archívum, napi kasszazárás) készült el; a készletkezelés és a beszerzés a
-következő szegmensekben jön.
+a fizetési folyamat, a logisztikai pénzügyi áttekintő (forgalmi összesítő,
+blokk-archívum, napi kasszazárás) és a vezetőségi riportok készültek el; a
+készletkezelés és a beszerzés a következő szegmensekben jön.
 
 ## Indítás
 
@@ -103,6 +103,11 @@ fut (`npm run dev` ugyanez, `node --watch` automatikus újraindítással).
 | `GET/POST /api/admin/zones` | csak `admin` — zónák |
 | `PUT/DELETE /api/admin/zones/:id` | csak `admin` |
 | `GET /api/admin/users` | csak `admin` |
+| `GET /api/admin/reports/top-items` | csak `admin` — legnépszerűbb tételek (`categoryId`, `limit`) |
+| `GET /api/admin/reports/peak-hours` | csak `admin` — óránkénti forgalom |
+| `GET /api/admin/reports/waiter-performance` | csak `admin` — pincérenkénti teljesítmény |
+| `GET /api/admin/reports/kitchen-times` | csak `admin` — átlagos elkészítési idő (`categoryId`, `menuItemId`) |
+| `GET /api/admin/reports/filter-options` | csak `admin` — kategóriák és tételek a szűrőkhöz |
 | `GET /api/logistics/summary` | `logistics` vagy `admin` — forgalmi összesítő (`dateFrom`, `dateTo`) |
 | `GET /api/logistics/orders` | ugyanaz — blokk-archívum, szűrhető és lapozható |
 | `GET /api/logistics/orders/:id` | ugyanaz — a blokk olvasható változata + fizetések |
@@ -143,7 +148,7 @@ jelszó-ellenőrzés, a token-kezelés és a middleware változatlan marad.
 
 ## Admin felület
 
-A `/admin` hat fülre bomlik:
+A `/admin` hét fülre bomlik:
 
 | Fül | Mit tud |
 | --- | --- |
@@ -153,6 +158,7 @@ A `/admin` hat fülre bomlik:
 | Extrák | kiegészítők hozzáadása, szerkesztése, törlése |
 | Asztaltérkép | vizuális szerkesztő: asztalok mozgatása, méretezése, forgatása, zónák kijelölése |
 | Felhasználók | lista (szerkesztés későbbi szegmensben) + valós idejű eseménynapló |
+| Riportok | vezetőségi statisztikák: legnépszerűbb tételek, forgalmi csúcsidőszakok, pincérenkénti teljesítmény, konyhai elkészítési idők — lásd a [Vezetőségi riportok](#vezetőségi-riportok) szakaszt |
 
 Az elérhetőség kapcsoló váltása `menu_item:availability_changed` socket eseményt
 küld a `server/sockets/emitters.js`-en keresztül, így a pincér és az online
@@ -265,6 +271,7 @@ server/
     receiptService.js     vendégblokk összeállítása (ÁFA, szervizdíj, végösszeg)
     paymentService.js     fizetés rögzítése, fizetettségi állapot, lezárás
     logisticsService.js   forgalmi összesítő, blokk-archívum, kasszazárás
+    reportService.js      vezetőségi riportok: top tételek, csúcsórák, teljesítmény
   middleware/
     requireAuth.js  JWT ellenőrzés az Authorization fejlécből
     requireRole.js  szerepkör szerinti szűrés
@@ -281,6 +288,7 @@ server/
   utils/
     password.js     bcrypt jelszó- és PIN-hash
     rateLimiter.js  memóriában tartott próbálkozás-korlátozás
+    dateRange.js    közös időszak-feloldás (helyi idő szerinti naphatárok)
     validation.js   mezőnkénti validáció, tipizált hibák (400/404/409)
   config.js     .env alapú konfiguráció
   index.js      belépési pont
@@ -312,6 +320,7 @@ public/
     index.html  fülek: étterem, kategóriák, tételek, extrák, felhasználók
     app.js      közös mag: fülek, API hívás, űrlap- és hibakezelés
     restaurant.js  menu.js  extras.js  users.js   nézetenkénti modulok
+    reports.js     vezetőségi riportok natív SVG diagramokkal
     floorPlan.js   vizuális asztaltérkép szerkesztő
     admin.css  floor-plan.css   admin-specifikus stílus
   shared/
@@ -599,6 +608,100 @@ jelölt **„Fizetés a helyszínen (készpénz vagy ATM)"** opció. Kártyás/S
 választásnál a felület jelzi, hogy **szimulált** visszaigazolásról van szó.
 Sikeres rögzítés után a vendég visszaigazolást lát: rendelés azonosító, fizetett
 összeg és fizetési mód.
+
+## Vezetőségi riportok
+
+Az admin felület **Riportok** füle négy kérdésre válaszol egy nézetben, **közös
+dátumtartomány-választóval** (alapértelmezés: az elmúlt 7 nap, gyors gombok:
+*Ma*, *Tegnap*, *7 nap*, *30 nap*). A négy lekérdezés párhuzamosan indul és
+együtt frissül — a vezetőnek egy dátumot kell beállítania.
+
+**Nincs külön riport-tábla.** Minden szám a már meglévő `orders`, `orderItems`,
+`menuItems` és `users` kollekciókból számolódik ki, a lekérdezés pillanatában, a
+repository rétegen keresztül. Ezen az adatmennyiségen ez gyorsabb és egyszerűbb,
+mint előre számolt összesítőket karbantartani — és nem tud elavulni.
+
+Két döntés minden riportra érvényes:
+
+- a **sztornózott** rendelések mindenhonnan kimaradnak (nem fogytak el, nem
+  hoztak bevételt, a konyhai idejük sem érvényes);
+- a **bevétel bruttó** — ugyanaz a szám, amit a vendég fizet, és amit a blokk,
+  illetve a logisztikai összesítő mutat. A számítás a
+  `receiptService.calculateTotals`-ból jön, hogy egyetlen helyen legyen
+  definiálva. Az ÁFA- és szervizdíj-kulcs az étterem **aktuális** beállítása, így
+  egy kulcsváltoztatás visszamenőleg is átszámolja a régi időszakokat — a
+  rendszer nem tárol kulcs-történetet.
+
+### Legnépszerűbb tételek
+
+Menütételenként az eladott darabszám és a bevétel, csökkenő sorrendben, opcionális
+kategóriaszűrővel. Rangsorolt lista vízszintes sávokkal; a sorok alatt a
+kategória, az egységár és az is, hány **külön rendelésben** szerepelt a tétel —
+ebből látszik, hogy tényleg széles körben népszerű-e, vagy csak egy nagy rendelés
+vitte fel.
+
+### Forgalmi csúcsidőszakok
+
+Óránkénti bontás (0–23) a rendelés felvételének **helyi idő** szerinti órája
+alapján — ez a személyzet beosztásának tervezéséhez használható érték. Mind a 24
+óra megjelenik akkor is, ha üres, így látszik a zárva tartás, és a tengely nem
+csúszik össze két nap között. A csúcsóra ki van emelve és névvel szerepel a
+fejlécben; egy kapcsolóval a rendelésszám és a bevétel között lehet váltani
+(újabb kérés nélkül, a válasz mindkettőt tartalmazza).
+
+### Pincérenkénti teljesítmény
+
+Kiszolgált rendelések száma, tételszám, bevétel, átlagos kosárérték és átlagos
+rendelés-lezárási idő (a rendelés felvétele és az **utolsó** tétel kiszolgálása
+között eltelt idő). A táblázat oszlopfejlécre kattintva rendezhető.
+
+A lezárási idő csak a **teljesen kiszolgált** rendelésekből számol: egy még
+nyitott asztal ideje folyamatosan nőne, és elhúzná az átlagot. A cella
+buboréksúgója megmutatja, hány lezárt rendelésből jött az átlag — mintaszám
+nélkül egy átlag félreérthető. Az online rendelésekhez nem tartozik pincér, ezért
+nem szerepelnek ebben a riportban.
+
+### Átlagos konyhai elkészítési idő
+
+A `preparingStartedAt` és a `readyAt` közötti idő menütételenként és
+kategóriánként, mintaszámmal, leggyorsabb és leglassabb méréssel — a leglassabb
+tétel van elöl, mert azt kell optimalizálni.
+
+Csak azok a tételek adnak mintát, amelyeknél **mindkét** időbélyeg megvan: a
+mérés bevezetése előtt felvett tételekhez nincs `readyAt` (nem állítható helyre),
+és a még készülő tétel ideje sem végleges. A válasz `missingSampleCount` mezője
+megmutatja, hány eladott tételsor maradt így ki — a felület ezt ki is írja, hogy
+az átlag megbízhatósága látszódjon. Egy perc alatti mérés másodpercben jelenik
+meg: a „0 perc" úgy nézne ki, mintha nem lenne adat.
+
+### Diagramok külső könyvtár nélkül
+
+A projekt egyetlen kliens oldali függőséget sem tölt be CDN-ről, és nincs
+bundler sem. Egy diagram-könyvtár bevezetése vagy új CDN-függést, vagy egy
+~200 KB-os vendor fájlt jelentene a repóban — négy egyszerű ábráért. Az
+adatmennyiség pici (24 oszlop az óradiagramon, 10 sor a rangsorban), ehhez nem
+kell rajzolómotor: az óradiagram natív `<svg>` téglalapokból áll, a rangsor pedig
+tiszta HTML + CSS sávokból. Így a diagram az admin felület témáját (kék-fekete,
+CSS változók) közvetlenül örökli, és nagyítva is éles marad.
+
+Egy részlet, ami könnyen elromlik: az oszlopok nyújtott koordinátarendszerben
+rajzolódnak (`preserveAspectRatio="none"`), hogy kitöltsék a szélességet — ez a
+szöveget is vízszintesen nyújtaná, ezért az óratengely feliratai HTML-ben
+készülnek az SVG alatt.
+
+### Teljesítmény
+
+Minden riport először **időszakra szűr a repository rétegben**
+(`orderRepository.getBetween`, `orderItemRepository.getBetween`), és csak a
+találatokhoz tölti be a kapcsolódó rekordokat (`getByIds`). Egy heti riport így
+nem olvassa végig a teljes historikus adatot, és a szűrési logika változatlanul
+átvihető egy SQL `WHERE` feltételbe, ha a tárolás később adatbázisra vált.
+
+Az időszak feloldása (naphatárok helyi idő szerint, validáció, maximális
+hossz) a közös `server/utils/dateRange.js`-ben van — a logisztikai összesítő és
+a riportok ugyanazt a szabályt használják, csak más alapértelmezéssel (a
+logisztikánál a mai nap, a riportoknál az elmúlt 7 nap). Két felület nem
+mutathat mást ugyanarra a dátumra.
 
 ## Logisztika — pénzügyi áttekintő
 

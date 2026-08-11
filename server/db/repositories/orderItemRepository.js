@@ -24,6 +24,9 @@ function buildItem(orderId, item, status) {
     createdAt: item.createdAt || new Date().toISOString(),
     // Mikor kezdett keszulni - ebbol latszik a konyhan, mennyi ideje fo.
     preparingStartedAt: null,
+    // Mikor lett kesz. A preparingStartedAt-tal egyutt ez adja az elkeszitesi
+    // idot a vezetoi riportokban (14. szegmens).
+    readyAt: null,
     servedAt: null
   };
 }
@@ -67,6 +70,27 @@ const orderItemRepository = {
     return base.filter((item) => ids.has(item.orderId));
   },
 
+  /**
+   * Tetelek egy idoszakban, a **leadasuk** ideje szerint (`createdAt`).
+   *
+   * A vezetoi riportok (14. szegmens) ezzel szurnek: eloszor az idoszakra
+   * szukitunk itt, a repository retegben, es csak a talalatokhoz toltjuk be a
+   * kapcsolodo rendeleseket - igy egy heti riport nem olvassa vegig a teljes
+   * historikus adatot. Ha a tarolas kesobb SQL-re valt, ez a szures egy az
+   * egyben egy WHERE feltetelre fordul.
+   *
+   * A tetel sajat `createdAt`-jat hasznaljuk, nem a rendelesét: egy asztalhoz
+   * tobb korben is rendelhetnek, akar ket kulonbozo napon.
+   */
+  getBetween(from, to) {
+    const start = new Date(from).getTime();
+    const end = new Date(to).getTime();
+    return base.filter((item) => {
+      const created = new Date(item.createdAt).getTime();
+      return created >= start && created <= end;
+    });
+  },
+
   /** Adott allapotu tetelek (pl. a konyhai sorhoz: pending + preparing). */
   getByStatus(status, orderIds = null) {
     const ids = orderIds ? new Set(orderIds) : null;
@@ -77,8 +101,12 @@ const orderItemRepository = {
    * Tetel allapotanak modositasa.
    *
    * Az idobelyegeket az allapot vezerli, hogy ne lehessenek ellentmondasban a
-   * statusszal: `served`-nel a servedAt, `preparing`-nel a preparingStartedAt
-   * toltodik ki, visszalepesnel (pending) pedig kiurul.
+   * statusszal: `served`-nel a servedAt, `ready`-nel a readyAt, `preparing`-nel
+   * a preparingStartedAt toltodik ki, visszalepesnel pedig kiurul.
+   *
+   * A `readyAt` a kiszolgalaskor (`served`) szandekosan **megmarad**: az a
+   * pillanat, amikor a konyha elkeszult vele, es a vezetoi riport ebbol szamolja
+   * az elkeszitesi idot - a kiszolgalas ezt nem irja felul.
    *
    * @returns {Promise<object|null>}
    */
@@ -93,9 +121,14 @@ const orderItemRepository = {
 
     if (status === ORDER_ITEM_STATUS.PREPARING) {
       patch.preparingStartedAt = now;
+      // Ujra keszul: a korabbi elkeszulesi ido mar nem ervenyes.
+      patch.readyAt = null;
+    } else if (status === ORDER_ITEM_STATUS.READY) {
+      patch.readyAt = now;
     } else if (status === ORDER_ITEM_STATUS.PENDING) {
-      // Visszatettek a sorba: a korabbi keszitesi ido mar nem ervenyes.
+      // Visszatettek a sorba: a korabbi keszitesi idok mar nem ervenyesek.
       patch.preparingStartedAt = null;
+      patch.readyAt = null;
     }
 
     return base.update(orderItemId, patch);

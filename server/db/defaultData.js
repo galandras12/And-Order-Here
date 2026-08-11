@@ -1,7 +1,7 @@
 const { COLLECTIONS, MENU_CATEGORY_KIND } = require('../../shared/constants');
 
 /** A JSON fajl sema verzioja - a migraciok ez alapjan futnak le. */
-const SCHEMA_VERSION = 7;
+const SCHEMA_VERSION = 8;
 
 /**
  * Ures adatbazis: minden kollekcio egy-egy tomb a JSON fajlon belul.
@@ -171,6 +171,28 @@ const MIGRATIONS = {
       // A vegosszeg a tetelekbol szamolodik; a migracio csak azt tudja, volt-e
       // egyaltalan fizetes - a pontos allapotot a service ujraszamolja.
       order.paymentStatus = paidByOrder.get(order.id) > 0 ? 'paid' : 'unpaid';
+      changed = true;
+    }
+
+    return changed;
+  },
+
+  /**
+   * 7 -> 8
+   *   - orderItems.readyAt: mikor lett kesz a tetel (14. szegmens). A
+   *     preparingStartedAt-tal egyutt ebbol szamolodik az elkeszitesi ido.
+   *
+   * A regi teteleknel ez az idopont **nem allithato helyre** - a rendszer eddig
+   * nem tarolta -, ezert null marad, meg a mar kiszolgalt teteleknel is. A
+   * riport csak azokat a teteleket veszi mintanak, ahol mindket idobelyeg
+   * megvan, igy a hianyzo adat nem torzitja az atlagot.
+   */
+  8(data) {
+    let changed = false;
+
+    for (const item of data.orderItems || []) {
+      if (item.readyAt !== undefined) continue;
+      item.readyAt = null;
       changed = true;
     }
 

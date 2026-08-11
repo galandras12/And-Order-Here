@@ -7,7 +7,7 @@ mezőt.
 
 ```json
 {
-  "schemaVersion": 7,
+  "schemaVersion": 8,
   "restaurants": [],
   "users": [],
   "tables": [],
@@ -192,6 +192,7 @@ függetlenül egyedi (a repository ütközés esetén újra generál).
 | `waiterId` | string → `users.id` \| null | ki adta le ezt a tételt |
 | `createdAt` | string (ISO 8601) | mikor adták le |
 | `preparingStartedAt` | string (ISO 8601) \| null | `preparing` állapotnál kitöltődik, `pending`-re visszalépéskor kiürül |
+| `readyAt` | string (ISO 8601) \| null | `ready` állapotnál kitöltődik; a `preparingStartedAt`-tal együtt ez adja az elkészítési időt |
 | `servedAt` | string (ISO 8601) \| null | `served` állapotnál automatikusan kitöltődik |
 
 A `waiterId` és a `createdAt` tétel szinten is tárolódik, nem csak a
@@ -202,10 +203,16 @@ A `status` a konyhai folyamat állapota: a tétel `pending` állapotban jön lé
 a konyha állítja `preparing`, majd `ready` értékre
 (`PATCH /api/kitchen/order-items/:id/status`), a pincér pedig `served` állapotba
 jelöli, amikor kivitte. Az időbélyegeket az állapot vezérli, hogy ne
-kerülhessenek ellentmondásba a statusszal: `served`-nél a `servedAt`,
-`preparing`-nél a `preparingStartedAt` töltődik ki, `pending`-re visszalépéskor
-pedig kiürül. A `preparingStartedAt` adja a konyhai „5 perce készül" jelzést, és
-ez lesz a későbbi időtúllépés-riasztás alapja is.
+kerülhessenek ellentmondásba a statusszal: `served`-nél a `servedAt`, `ready`-nél
+a `readyAt`, `preparing`-nél a `preparingStartedAt` töltődik ki, `pending`-re
+visszalépéskor pedig kiürül. A `preparingStartedAt` adja a konyhai „5 perce
+készül" jelzést, és ez lesz a későbbi időtúllépés-riasztás alapja is.
+
+A `readyAt` a kiszolgáláskor (`served`) **szándékosan megmarad**: az a
+pillanat, amikor a konyha elkészült a tétellel, és a vezetői riport ebből
+számolja az elkészítési időt (`readyAt - preparingStartedAt`) — a kiszolgálás ezt
+nem írhatja felül. Ha a konyha visszalépteti a tételt `preparing` állapotba
+(újra készül), a `readyAt` kiürül: a korábbi mérés már nem érvényes.
 
 „Minden tétel kiszolgálva" nincs külön mezőben tárolva: a rendelés
 `allItemsServed` értékét a service réteg a tételek állapotából számolja
@@ -324,11 +331,17 @@ A fájl `schemaVersion` mezője jelzi, melyik séma szerint készült. Indulásk
 | 5 | `orders.receiptNumber` — a régi rendelések is kapnak egyedi hatjegyű azonosítót, hogy a blokkjuk nyomtatható legyen |
 | 6 | `orders.guestName` — az online vendégfelülethez; a korábbi rendeléseknél `null` |
 | 7 | `orders.paymentStatus` — a fizetettségi állapot; a korábbi rendelések a már rögzített fizetéseik alapján kapják meg |
+| 8 | `orderItems.readyAt` — mikor lett kész a tétel. A korábbi tételeknél `null` marad: ez az időpont nem állítható helyre, a rendszer eddig nem tárolta |
 
 A `cashClosings` kollekció (13. szegmens) **nem igényelt verzióemelést**: új,
 üres kollekcióhoz nem tartozik adatátalakítás, a `normalizeData` a meglévő
 fájlban is létrehozza. Verziót csak akkor kell emelni, ha meglévő rekordokat
-kell átírni vagy hiányzó mezőt kell visszamenőleg feltölteni.
+kell átírni vagy hiányzó mezőt kell visszamenőleg feltölteni — mint a
+`readyAt`-nál (8. verzió), ahol minden meglévő tételsor megkapja a mezőt.
+
+Ha egy migráció nem tud valódi értéket helyreállítani (a `readyAt` ilyen: az
+időpont egyszerűen nincs meg), akkor `null`-t ír, és a rá épülő riport ezeket a
+rekordokat kihagyja a mintából — a hiányzó adat nem torzíthatja az átlagot.
 
 Új migrációhoz: emeld a `SCHEMA_VERSION` értékét, és vedd fel a hozzá tartozó
 függvényt a `MIGRATIONS` objektumba.

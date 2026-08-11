@@ -8,6 +8,7 @@ const {
 } = require('../db/repositories');
 const receiptService = require('./receiptService');
 const { NotFoundError, createValidator, trimmed, toNumber } = require('../utils/validation');
+const dateRange = require('../utils/dateRange');
 const {
   ROLES,
   ORDER_TYPE,
@@ -48,12 +49,6 @@ const {
  * ---------------------------------------------------------------------------
  */
 
-/** Elfogadott datum formatum a szurokben. */
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-
-/** Egy lekerdezes legfeljebb ekkora idoszakot fedhet le. */
-const MAX_RANGE_DAYS = 366;
-
 /** Lapozas alapertelmezesei. */
 const DEFAULT_PAGE_SIZE = 25;
 const MAX_PAGE_SIZE = 200;
@@ -70,7 +65,7 @@ const CASH_METHODS = [PAYMENT_METHOD.CASH, PAYMENT_METHOD.ATM_LATER];
 /** Egy zaras beirhato legnagyobb osszege - elgepeles elleni vedelem. */
 const MAX_CLOSING_AMOUNT = 100000000;
 
-/** Fizetesi mod -> emberi cimke (a feluletek is ezt hasznaljak). */
+/** Fizetesi mod -> emberi cimke (a feluletek is ebbol epitkeznek). */
 const METHOD_LABEL = PAYMENT_METHODS.reduce((map, method) => {
   map[method.key] = method.label;
   return map;
@@ -81,86 +76,17 @@ const CANCELLED = ORDER_STATUS.CANCELLED;
 
 /* ------------------------------------------------------------ idoszak */
 
-/** Ket szamjegyre egeszitett szam (datum osszerakasahoz). */
-function pad(value) {
-  return String(value).padStart(2, '0');
-}
-
-/** Egy Date helyi ido szerinti napja YYYY-MM-DD alakban. */
-function toDateString(date) {
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-}
-
 /**
- * Nap kezdete / vege **helyi ido** szerint.
- *
- * Szandekosan nem UTC: a "mai nap" az ettermet uzemelteto ember napja, nem a
- * szerver idozonaja szerinti nulla ora.
- */
-function dayStart(dateString) {
-  const [year, month, day] = dateString.split('-').map(Number);
-  return new Date(year, month - 1, day, 0, 0, 0, 0);
-}
-
-function dayEnd(dateString) {
-  const [year, month, day] = dateString.split('-').map(Number);
-  return new Date(year, month - 1, day, 23, 59, 59, 999);
-}
-
-/** Ervenyes naptari nap-e (a 2026-02-31 formailag jo, de nem letezik). */
-function isRealDate(dateString) {
-  if (!DATE_PATTERN.test(dateString)) return false;
-  const parsed = dayStart(dateString);
-  return !Number.isNaN(parsed.getTime()) && toDateString(parsed) === dateString;
-}
-
-/**
- * A lekerdezes idoszaka.
- *
- * Alapertelmezes: a mai nap. Ha csak `dateFrom` erkezik, az egyetlen napot
- * jelent (dateTo = dateFrom) - igy egy datum beirasa mindig ugyanazt jelenti.
- *
- * @param {{ dateFrom?: string, dateTo?: string }} query
- * @param {object} [validator] kulso hibagyujto, ha tobb mezot egyszerre nezunk
- * @returns {{ dateFrom: string, dateTo: string, from: string, to: string }}
+ * Az idoszak feloldasa. A kozos `dateRange` seged vegzi, ugyanazokkal a
+ * szabalyokkal, mint a vezetoi riportoknal - itt az alapertelmezes a mai nap.
  */
 function resolveRange(query = {}, validator = createValidator()) {
-  const today = toDateString(new Date());
-  const rawFrom = trimmed(query.dateFrom);
-  const rawTo = trimmed(query.dateTo);
-
-  const dateFrom = rawFrom || today;
-  const dateTo = rawTo || dateFrom;
-
-  if (!isRealDate(dateFrom)) validator.fail('dateFrom', 'Érvényes dátum szükséges (ÉÉÉÉ-HH-NN).');
-  if (!isRealDate(dateTo)) validator.fail('dateTo', 'Érvényes dátum szükséges (ÉÉÉÉ-HH-NN).');
-
-  if (validator.valid) {
-    if (dateFrom > dateTo) {
-      validator.fail('dateTo', 'A záró dátum nem lehet korábbi a kezdőnél.');
-    } else {
-      const days = Math.round((dayStart(dateTo) - dayStart(dateFrom)) / 86400000) + 1;
-      if (days > MAX_RANGE_DAYS) {
-        validator.fail('dateTo', `Egyszerre legfeljebb ${MAX_RANGE_DAYS} nap kérdezhető le.`);
-      }
-    }
-  }
-
-  validator.throwIfInvalid('A megadott időszak hibás.');
-
-  return {
-    dateFrom,
-    dateTo,
-    from: dayStart(dateFrom).toISOString(),
-    to: dayEnd(dateTo).toISOString()
-  };
+  return dateRange.resolveRange(query, { validator });
 }
 
 /** Beleesik-e egy idobelyeg az idoszakba. */
 function inRange(iso, range) {
-  if (!iso) return false;
-  const time = new Date(iso).getTime();
-  return time >= new Date(range.from).getTime() && time <= new Date(range.to).getTime();
+  return dateRange.inRange(iso, range);
 }
 
 /* ------------------------------------------------------------- kozos */
@@ -573,7 +499,7 @@ function listCashClosings(restaurantId, query = {}) {
 }
 
 module.exports = {
-  MAX_RANGE_DAYS,
+  MAX_RANGE_DAYS: dateRange.MAX_RANGE_DAYS,
   DEFAULT_PAGE_SIZE,
   MAX_PAGE_SIZE,
   CASH_METHODS,
