@@ -1,11 +1,33 @@
 /*
  * Kozos alap stilus mind az 5 felulethez.
  *
- * Alapertelmezes: sotet (fekete) tema, hogy a vegleges design erre epulhessen.
- * Feluletenkent a --accent (es a logisztikanal a teljes vilagos tema) a
- * data-interface attributummal all at - lasd a fajl aljan.
+ * Ez a fajl a rendszer **design-alapja**: tipografia, terkozok, gomb- es
+ * urlapelem stilusok, allapotjelzok. Mind az ot felulet ezt tolti be elsokent
+ * (`<link href="/assets/base.css">`), majd a sajat fajljaban csak a szerepkorre
+ * jellemzo reszt teszi hozza. Igy a rendszer egyseges termekkent hat, miközben
+ * megmarad a feluletenkenti szinkod.
+ *
+ * Alapertelmezes: sotet (fekete) tema. Feluletenkent a szinvaltozok a
+ * `data-interface` attributummal allnak at - lasd a fajl aljan:
+ *
+ *   pincer: zold · szakacs: sarga · admin: kek · logisztika: vilagos · online: arany
+ *
+ * ---------------------------------------------------------------------------
+ * TORESPONTOK (15. szegmens). A CSS nem enged valtozot a @media feltetelben,
+ * ezert ezt a harom erteket kell mindenhol szo szerint hasznalni:
+ *
+ *   max-width:  480px   mobil (allo telefon)
+ *   max-width:  768px   tablet allo / nagy telefon
+ *   max-width: 1024px   kis laptop / tablet fekvo
+ *   min-width: 1600px   fali kijelzo (csak a konyhai munkapult hasznalja)
+ *
+ * Az alapertelmezett (media query nelkuli) szabaly mindig a legkisebbtol
+ * felfele epul, kiveve a pincer es a szakacs feluletet: ott a tablet a fo
+ * hasznalati eset, ezert az alap a tablet, es a mobil a szukites.
+ * ---------------------------------------------------------------------------
  */
 :root {
+  /* --- szinek (feluletenkent felulirva) --- */
   --bg: #000000;
   --surface: #0e0e10;
   --surface-2: #17171a;
@@ -15,8 +37,73 @@
   --accent: #e0a340;
   --accent-contrast: #000000;
   --danger: #ff6b6b;
-  --radius: 10px;
+  --success: #35c46a;
+  --warning: #f2c744;
+
+  /* --- tipografia --- */
   --font: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-base: 14px;
+  --text-md: 15px;
+  --text-lg: 17px;
+  --text-xl: 22px;
+  --text-2xl: 28px;
+
+  /*
+   * --- terkoz-skala ---
+   * Negyes lepteku: minden margo es padding ezekbol all ossze, hogy a
+   * feluletek ritmusa egyezzen.
+   */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* --- lekerekites --- */
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  /*
+   * --- arnyekok ---
+   * Sotet temara hangolva; a vilagos feluletek (logisztika, online vilagos
+   * tema) halvanyabbra irjak felul, kulonben piszkosnak latszanak.
+   */
+  --shadow-sm: 0 2px 12px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 6px 24px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.55);
+
+  /*
+   * --- erintesi celmeret ---
+   * Az altalanosan ajanlott minimum 44x44 px. Egermutatoval dolgozo gepen a
+   * suru admin tablazatok kisebb gombokat is hasznalhatnak; erintokepernyon
+   * (`pointer: coarse`) viszont mindent erre a meretre huzunk fel.
+   */
+  --tap-min: 44px;
+
+  /*
+   * --- fokuszgyuru (billentyuzetes navigacio) ---
+   * Outline-nal (nem box-shadow) marad lathato akkor is, ha az elem levagja a
+   * tulcsordulast, es nem tolja el az elrendezest.
+   */
+  --focus-width: 2px;
+  --focus-offset: 2px;
+}
+
+/*
+ * Billentyuzetes fokusz mindenhol lathato, egerkattintasnal viszont nem villan
+ * fel (`:focus-visible`). Enelkul a tab-bal navigalo felhasznalo elveszik.
+ */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: var(--focus-width) solid var(--accent);
+  outline-offset: var(--focus-offset);
 }
 
 *,
@@ -185,8 +272,18 @@ body.is-centered {
   border-color: var(--accent);
 }
 
+/* Billentyuzetes fokusznal a keret mellett a gyuru is kell. */
+.field__input:focus-visible {
+  outline: var(--focus-width) solid var(--accent);
+  outline-offset: var(--focus-offset);
+}
+
 .btn {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Erintesi celmeret: a gomb sosem lehet alacsonyabb 44 px-nel. */
+  min-height: var(--tap-min);
   width: 100%;
   padding: 13px 18px;
   border: 1px solid var(--accent);
@@ -450,7 +547,7 @@ body.is-centered {
 }
 
 .event-log__name {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   color: var(--accent);
 }
 
@@ -485,7 +582,7 @@ body.is-centered {
   border-radius: 999px;
   font-size: 12px;
   color: var(--text-muted);
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--shadow-sm);
 }
 
 .conn-status__dot {
@@ -497,12 +594,12 @@ body.is-centered {
 }
 
 .conn-status.is-connected .conn-status__dot {
-  background: #35c46a;
+  background: var(--success);
   box-shadow: 0 0 0 3px rgba(53, 196, 106, 0.18);
 }
 
 .conn-status.is-connected .conn-status__text {
-  color: #35c46a;
+  color: var(--success);
 }
 
 .conn-status.is-disconnected .conn-status__dot {
@@ -515,16 +612,49 @@ body.is-centered {
 }
 
 .conn-status.is-connecting .conn-status__dot {
-  background: #f2c744;
+  background: var(--warning);
   animation: conn-pulse 1.2s ease-in-out infinite;
 }
 
 .conn-status__event:not(:empty) {
   padding-left: 8px;
   border-left: 1px solid var(--border);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
   color: var(--text-muted);
+}
+
+/*
+ * Mobil: a jelzo pontra zsugorodik.
+ *
+ * Telefonon a "élő kapcsolat" felirat ratakarna a kepernyo aljan levo fo
+ * gombra (pl. a pincer "Rendelés leadása" gombjara). Ep kapcsolatnal eleg egy
+ * apro pont a sarokban; ha viszont megszakadt, a szoveg fontos - olyankor
+ * kiirjuk, mert az mar nem zaj, hanem figyelmeztetes.
+ */
+@media (max-width: 480px) {
+  .conn-status {
+    right: 10px;
+    bottom: 10px;
+    padding: 7px;
+    gap: 0;
+  }
+
+  .conn-status__text,
+  .conn-status__event {
+    display: none;
+  }
+
+  .conn-status.is-disconnected,
+  .conn-status.is-connecting {
+    padding: 8px 14px;
+    gap: 8px;
+  }
+
+  .conn-status.is-disconnected .conn-status__text,
+  .conn-status.is-connecting .conn-status__text {
+    display: inline;
+  }
 }
 
 @keyframes conn-pulse {
@@ -533,8 +663,202 @@ body.is-centered {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .conn-status.is-connecting .conn-status__dot {
+  .conn-status.is-connecting .conn-status__dot,
+  .skeleton,
+  .spinner {
     animation: none;
+  }
+
+  /* Animacio nelkul is latszodjon, hogy toltes van folyamatban. */
+  .skeleton {
+    background: var(--surface-2);
+  }
+}
+
+
+/* ---------- Urlap visszajelzes (kozos mind az 5 feluleten) ---------- */
+
+/*
+ * A mezonkenti hibajelzes korabban feluletenkent volt lemasolva; itt egy
+ * helyen van, hogy egy hibas ar az adminban ugyanugy nezzen ki, mint egy hibas
+ * osszeg a kasszazarasnal.
+ */
+.field--error .field__input {
+  border-color: var(--danger);
+}
+
+.field__error {
+  display: block;
+  margin-top: 5px;
+  color: var(--danger);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+}
+
+.field__error:empty {
+  display: none;
+}
+
+.field__hint {
+  display: block;
+  margin-top: 5px;
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  line-height: 1.4;
+}
+
+/* ---------- Betoltes es hibaallapot ---------- */
+
+/*
+ * Skeleton: a tartalom helyet mar a betoltes alatt kitolti, igy nem ugral az
+ * elrendezes, amikor megerkezik az adat.
+ */
+.skeleton {
+  display: block;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(
+    90deg,
+    var(--surface-2) 25%,
+    var(--border) 37%,
+    var(--surface-2) 63%
+  );
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.3s ease-in-out infinite;
+}
+
+.skeleton--text {
+  height: 12px;
+  margin: 8px 0;
+}
+
+.skeleton--row {
+  height: 40px;
+  margin: 8px 0;
+}
+
+.skeleton--block {
+  height: 120px;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+
+/* Porgo jelzo azokhoz a helyekhez, ahol nincs ertelmes helyorzo alak. */
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spinner-turn 0.7s linear infinite;
+  vertical-align: -3px;
+}
+
+@keyframes spinner-turn {
+  to { transform: rotate(360deg); }
+}
+
+.loading-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: var(--text-base);
+}
+
+/*
+ * Hibaallapot ujraprobalkozassal. Halozati hiba utan a felhasznalo ne
+ * kenyszeruljon a lap ujratoltesere - egy gombbal ujra tudja kerni az adatot.
+ */
+.state-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--danger);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-size: var(--text-base);
+  line-height: 1.5;
+}
+
+.state-box[hidden] {
+  display: none;
+}
+
+.state-box__text {
+  margin: 0;
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.state-box__title {
+  display: block;
+  font-weight: 600;
+}
+
+.state-box__detail {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.state-box__retry {
+  flex: none;
+  width: auto;
+  min-height: var(--tap-min);
+  padding: 10px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--text-base);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.state-box__retry:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ---------- Erintokepernyo ---------- */
+
+/*
+ * Ahol nincs pontos mutato (telefon, tablet), minden kattinthato elem
+ * felhuzodik az ajanlott 44 px-es celmeretre. Egerrel dolgozo gepen a suru
+ * admin- es logisztikai tablazatok megtarthatjak a tomorebb sorokat.
+ */
+@media (pointer: coarse) {
+  button,
+  [role='button'],
+  .btn,
+  .btn--sm,
+  .btn--ghost,
+  .btn--icon,
+  .btn--icon-sq,
+  select,
+  input[type='date'],
+  input[type='number'],
+  input[type='text'],
+  input[type='email'],
+  input[type='password'] {
+    min-height: var(--tap-min);
+  }
+
+  /* Ikongombok negyzetesek maradjanak, ne nyuljanak meg. */
+  .btn--icon,
+  .btn--icon-sq {
+    min-width: var(--tap-min);
   }
 }
 
@@ -557,6 +881,10 @@ body.is-centered {
 
 /* logisztika: vilagos (feher) tema */
 [data-interface='logistics'] {
+  /* Vilagos hatteren a sotet temara hangolt arnyek piszkosnak latszik. */
+  --shadow-sm: 0 1px 4px rgba(16, 18, 23, 0.08);
+  --shadow-md: 0 6px 24px rgba(16, 18, 23, 0.12);
+  --shadow-lg: 0 12px 32px rgba(16, 18, 23, 0.16);
   --bg: #f5f6f8;
   --surface: #ffffff;
   --surface-2: #f0f1f4;

@@ -173,8 +173,27 @@
       (data.online && data.online.activeCount ? ' · ' + data.online.activeCount + ' online rendelés' : '');
   }
 
+  /**
+   * Teljes ujratoltes (elrendezes + allapotok).
+   *
+   * Halozati hiba eseten a kepernyon marado hibadobozt mutatjuk
+   * ujraprobalkozas gombbal - egy elszallo toast a pincer kezeben eszrevetlen
+   * maradna, es az asztalterkep magyarazat nelkul allna meg.
+   */
   function refreshAll() {
-    return loadLayout().then(loadStates);
+    return loadLayout()
+      .then(loadStates)
+      .then(function (data) {
+        window.AndOrderUiState.clear('[data-load-error]');
+        return data;
+      })
+      .catch(function (err) {
+        window.AndOrderUiState.error('[data-load-error]', err, {
+          title: 'Az asztaltérkép nem tölthető be.',
+          retry: refreshAll
+        });
+        throw err;
+      });
   }
 
   /* ------------------------------------------------------------- menu */
@@ -514,8 +533,17 @@
       else closeMenu();
     });
 
+    /*
+     * Atmeretezes: a bongeszo huzas kozben tucatnyi esemenyt kuld, de eleg a
+     * kovetkezo kepkockan egyszer ujrarajzolni.
+     */
+    var resizeFrame = null;
     window.addEventListener('resize', function () {
-      map.resize();
+      if (resizeFrame) return;
+      resizeFrame = window.requestAnimationFrame(function () {
+        resizeFrame = null;
+        map.resize();
+      });
     });
   }
 
@@ -524,6 +552,27 @@
     loadStates();
     window.AndOrderOrderView.refresh();
     window.AndOrderOrderStatus.refresh();
+  }
+
+  /**
+   * Osszevont frissites (15. szegmens).
+   *
+   * Egy asztalnal tobb esemeny is erkezhet egymas utan tized-masodpercen belul
+   * (a konyha egyszerre lep tovabb tobb tetelt, a rendeles leadasa utan pedig
+   * az `order:created` es az `order_item:added` is befut). Enelkul minden
+   * esemeny kulon halozati kerest es teljes Canvas-ujrarajzolast inditana.
+   *
+   * A kesleltetes rovid: a pincer szamara ez eszrevehetetlen, de a sorozatban
+   * erkezo esemenyeket egyetlen frissitesse vonja ossze.
+   */
+  var refreshTimer = null;
+
+  function scheduleRefresh() {
+    window.clearTimeout(refreshTimer);
+    refreshTimer = window.setTimeout(function () {
+      refreshTimer = null;
+      refreshViews();
+    }, 150);
   }
 
   /** itemId -> mikor jeleztuk; ugyanarrol a tetelrol ne szoljunk ketszer. */
@@ -570,9 +619,9 @@
     // Ha eppen nyitva van a rendelesfelvetel vagy az attekinto, azok is
     // frissulnek (mas pincer is adhatott tetelt ugyanahhoz az asztalhoz).
     ['table:status_changed', 'table:reserved', 'order:created', 'order_item:added',
-      'order_item:served'].forEach(function (event) {
+      'order_item:served', 'order:payment_recorded'].forEach(function (event) {
       socket.on(event, function () {
-        refreshViews();
+        scheduleRefresh();
       });
     });
 
@@ -581,7 +630,7 @@
     // toast es - ha be van kapcsolva - rovid hangjelzes hivja fel ra a
     // figyelmet, hogy ne kelljen a reszletes nezetet figyelni.
     socket.on('order_item:status_changed', function (payload) {
-      refreshViews();
+      scheduleRefresh();
 
       var item = payload && payload.orderItem;
       if (!item || item.status !== 'ready') return;

@@ -7,7 +7,7 @@ mezőt.
 
 ```json
 {
-  "schemaVersion": 5,
+  "schemaVersion": 8,
   "restaurants": [],
   "users": [],
   "tables": [],
@@ -18,7 +18,8 @@ mezőt.
   "reservations": [],
   "orders": [],
   "orderItems": [],
-  "payments": []
+  "payments": [],
+  "cashClosings": []
 }
 ```
 
@@ -45,7 +46,12 @@ orders
 │   ├── menuItems    (orderItems.menuItemId)
 │   └── extras       (orderItems.extraIds[] — id-tömb, nem kapcsolótábla)
 └── payments         (payments.orderId)
+
+cashClosings         (cashClosings.restaurantId, closedByUserId → users.id)
 ```
+
+A `cashClosings` szándékosan nem kapcsolódik egyetlen rendeléshez vagy
+fizetéshez sem: egy **időszakot** dokumentál, nem tranzakciókat.
 
 ## Kollekciók
 
@@ -163,7 +169,9 @@ látni ott.
 | `type` | string | `dine_in` \| `online` |
 | `waiterId` | string → `users.id` \| null | felvevő pincér, online rendelésnél `null` |
 | `status` | string | `new` → `accepted` → `in_preparation` → `ready` → `served` → `bill_requested` → `paid`, illetve `cancelled` |
+| `guestName` | string \| null | online rendelésnél a vendég neve, egyébként `null` |
 | `receiptNumber` | string | hatjegyű azonosító a vendégblokkon |
+| `paymentStatus` | string | `unpaid` \| `paid` — a befizetések és a végösszeg viszonya |
 | `createdAt` | string (ISO 8601) | felvétel ideje |
 
 A `receiptNumber` a rendelés létrehozásakor születik, és nem változik: így az
@@ -184,6 +192,7 @@ függetlenül egyedi (a repository ütközés esetén újra generál).
 | `waiterId` | string → `users.id` \| null | ki adta le ezt a tételt |
 | `createdAt` | string (ISO 8601) | mikor adták le |
 | `preparingStartedAt` | string (ISO 8601) \| null | `preparing` állapotnál kitöltődik, `pending`-re visszalépéskor kiürül |
+| `readyAt` | string (ISO 8601) \| null | `ready` állapotnál kitöltődik; a `preparingStartedAt`-tal együtt ez adja az elkészítési időt |
 | `servedAt` | string (ISO 8601) \| null | `served` állapotnál automatikusan kitöltődik |
 
 A `waiterId` és a `createdAt` tétel szinten is tárolódik, nem csak a
@@ -194,15 +203,26 @@ A `status` a konyhai folyamat állapota: a tétel `pending` állapotban jön lé
 a konyha állítja `preparing`, majd `ready` értékre
 (`PATCH /api/kitchen/order-items/:id/status`), a pincér pedig `served` állapotba
 jelöli, amikor kivitte. Az időbélyegeket az állapot vezérli, hogy ne
-kerülhessenek ellentmondásba a statusszal: `served`-nél a `servedAt`,
-`preparing`-nél a `preparingStartedAt` töltődik ki, `pending`-re visszalépéskor
-pedig kiürül. A `preparingStartedAt` adja a konyhai „5 perce készül" jelzést, és
-ez lesz a későbbi időtúllépés-riasztás alapja is.
+kerülhessenek ellentmondásba a statusszal: `served`-nél a `servedAt`, `ready`-nél
+a `readyAt`, `preparing`-nél a `preparingStartedAt` töltődik ki, `pending`-re
+visszalépéskor pedig kiürül. A `preparingStartedAt` adja a konyhai „5 perce
+készül" jelzést, és ez lesz a későbbi időtúllépés-riasztás alapja is.
+
+A `readyAt` a kiszolgáláskor (`served`) **szándékosan megmarad**: az a
+pillanat, amikor a konyha elkészült a tétellel, és a vezetői riport ebből
+számolja az elkészítési időt (`readyAt - preparingStartedAt`) — a kiszolgálás ezt
+nem írhatja felül. Ha a konyha visszalépteti a tételt `preparing` állapotba
+(újra készül), a `readyAt` kiürül: a korábbi mérés már nem érvényes.
 
 „Minden tétel kiszolgálva" nincs külön mezőben tárolva: a rendelés
 `allItemsServed` értékét a service réteg a tételek állapotából számolja
 (`orderService.toOrderView`, `orderItemRepository.isOrderFullyServed`), így nem
 lehet a tárolt adattal ellentmondásba kerülni.
+
+A `paymentStatus` **szándékosan külön** a `status` életciklustól: egy online
+rendelést a vendég már a leadáskor kifizethet, miközben a konyhának még dolga van
+vele. A rendelés akkor zárul le (`status: paid`), ha kifizették **és** minden
+tételét kiszolgálták.
 
 ### payments
 
@@ -217,6 +237,33 @@ lehet a tárolt adattal ellentmondásba kerülni.
 Egy rendeléshez több fizetés is tartozhat (részfizetés, megosztott számla),
 ezért az összeget mindig összegezve kell nézni:
 `paymentRepository.getTotalPaid(orderId)`.
+
+### cashClosings
+
+| Mező | Típus | Leírás |
+| --- | --- | --- |
+| `id` | string | `ccl_…` |
+| `restaurantId` | string → `restaurants.id` | |
+| `dateFrom` | string (`ÉÉÉÉ-HH-NN`) | a lezárt időszak első napja |
+| `dateTo` | string (`ÉÉÉÉ-HH-NN`) | a lezárt időszak utolsó napja |
+| `expectedAmount` | number | a rendszer által várt készpénz (Ft) |
+| `actualAmount` | number | a munkatárs által leszámolt összeg (Ft) |
+| `difference` | number | `actualAmount - expectedAmount` (negatív = hiány) |
+| `closedByUserId` | string → `users.id` \| null | ki zárta |
+| `closedAt` | string (ISO 8601) | a zárás időpontja |
+| `note` | string | szabad szöveges megjegyzés |
+
+Napi (vagy műszakonkénti) kasszazárás: a rendszer által számolt és a ténylegesen
+leszámolt készpénz egyeztetése. A várt összeget mindig a szerver számolja
+(`logisticsService`) a `cash` és `atm_later` módú, az időszakban rögzített
+fizetésekből — a kliens csak a leszámolt összeget küldi.
+
+A `difference` **tárolt** mező, nem számolt: a zárás pillanatának dokumentuma,
+ami később sem változhat meg, akkor sem, ha utólag kerül be fizetés az adott
+napra. A zárás nem módosít rendelést vagy fizetést, és ugyanarra a napra több
+zárás is rögzíthető (délelőtti és délutáni műszak).
+
+### Rendelés-lezárás
 
 A `paid` és a `cancelled` állapot zárja a rendelést; minden más — a
 `bill_requested` is — nyitottnak számít. Az asztaltérkép állapotát ebből
@@ -282,6 +329,19 @@ A fájl `schemaVersion` mezője jelzi, melyik séma szerint készült. Indulásk
 | 3 | `orderItems.waiterId` és `createdAt` — a régi tételek a rendeléstől öröklik |
 | 4 | `menuCategories.kind` (a meglévő kategóriák a nevükből kapják meg: `Ételek` → `food`, `Italok` → `drink`, egyéb → `other`); `orderItems.preparingStartedAt` |
 | 5 | `orders.receiptNumber` — a régi rendelések is kapnak egyedi hatjegyű azonosítót, hogy a blokkjuk nyomtatható legyen |
+| 6 | `orders.guestName` — az online vendégfelülethez; a korábbi rendeléseknél `null` |
+| 7 | `orders.paymentStatus` — a fizetettségi állapot; a korábbi rendelések a már rögzített fizetéseik alapján kapják meg |
+| 8 | `orderItems.readyAt` — mikor lett kész a tétel. A korábbi tételeknél `null` marad: ez az időpont nem állítható helyre, a rendszer eddig nem tárolta |
+
+A `cashClosings` kollekció (13. szegmens) **nem igényelt verzióemelést**: új,
+üres kollekcióhoz nem tartozik adatátalakítás, a `normalizeData` a meglévő
+fájlban is létrehozza. Verziót csak akkor kell emelni, ha meglévő rekordokat
+kell átírni vagy hiányzó mezőt kell visszamenőleg feltölteni — mint a
+`readyAt`-nál (8. verzió), ahol minden meglévő tételsor megkapja a mezőt.
+
+Ha egy migráció nem tud valódi értéket helyreállítani (a `readyAt` ilyen: az
+időpont egyszerűen nincs meg), akkor `null`-t ír, és a rá épülő riport ezeket a
+rekordokat kihagyja a mintából — a hiányzó adat nem torzíthatja az átlagot.
 
 Új migrációhoz: emeld a `SCHEMA_VERSION` értékét, és vedd fel a hozzá tartozó
 függvényt a `MIGRATIONS` objektumba.

@@ -60,6 +60,18 @@ function createRepository(collection) {
       return repo.filter((row) => row[field] === value);
     },
 
+    /**
+     * Tobb rekord id szerint, egy menetben.
+     *
+     * Igy egy szurt halmazhoz tartozo kapcsolodo rekordokat is be lehet tolteni
+     * anelkul, hogy a teljes kollekciot be kellene olvasni (pl. a riportoknal:
+     * eloszor idoszakra szurunk, aztan csak a talalatok rendeleseit kerjuk le).
+     */
+    getByIds(ids) {
+      const set = ids instanceof Set ? ids : new Set(ids);
+      return repo.filter((row) => set.has(row.id));
+    },
+
     /** Elso rekord egy mezo pontos erteke alapjan, vagy null. */
     findOneBy(field, value) {
       return repo.find((row) => row[field] === value);

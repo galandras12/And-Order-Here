@@ -1,7 +1,7 @@
 const { COLLECTIONS, MENU_CATEGORY_KIND } = require('../../shared/constants');
 
 /** A JSON fajl sema verzioja - a migraciok ez alapjan futnak le. */
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 8;
 
 /**
  * Ures adatbazis: minden kollekcio egy-egy tomb a JSON fajlon belul.
@@ -130,6 +130,69 @@ const MIGRATIONS = {
 
       used.add(candidate);
       order.receiptNumber = candidate;
+      changed = true;
+    }
+
+    return changed;
+  },
+
+  /**
+   * 5 -> 6
+   *   - orders.guestName: az online rendelest leado vendeg neve. A korabbi
+   *     rendeleseknel nincs ilyen adat, ezert null.
+   */
+  6(data) {
+    let changed = false;
+
+    for (const order of data.orders || []) {
+      if (order.guestName !== undefined) continue;
+      order.guestName = null;
+      changed = true;
+    }
+
+    return changed;
+  },
+
+  /**
+   * 6 -> 7
+   *   - orders.paymentStatus: a fizetettsegi allapot (12. szegmens). A korabbi
+   *     rendelesek a mar rogzitett fizeteseik osszege alapjan kapjak meg.
+   */
+  7(data) {
+    let changed = false;
+
+    const paidByOrder = new Map();
+    for (const payment of data.payments || []) {
+      paidByOrder.set(payment.orderId, (paidByOrder.get(payment.orderId) || 0) + payment.amount);
+    }
+
+    for (const order of data.orders || []) {
+      if (order.paymentStatus !== undefined) continue;
+      // A vegosszeg a tetelekbol szamolodik; a migracio csak azt tudja, volt-e
+      // egyaltalan fizetes - a pontos allapotot a service ujraszamolja.
+      order.paymentStatus = paidByOrder.get(order.id) > 0 ? 'paid' : 'unpaid';
+      changed = true;
+    }
+
+    return changed;
+  },
+
+  /**
+   * 7 -> 8
+   *   - orderItems.readyAt: mikor lett kesz a tetel (14. szegmens). A
+   *     preparingStartedAt-tal egyutt ebbol szamolodik az elkeszitesi ido.
+   *
+   * A regi teteleknel ez az idopont **nem allithato helyre** - a rendszer eddig
+   * nem tarolta -, ezert null marad, meg a mar kiszolgalt teteleknel is. A
+   * riport csak azokat a teteleket veszi mintanak, ahol mindket idobelyeg
+   * megvan, igy a hianyzo adat nem torzitja az atlagot.
+   */
+  8(data) {
+    let changed = false;
+
+    for (const item of data.orderItems || []) {
+      if (item.readyAt !== undefined) continue;
+      item.readyAt = null;
       changed = true;
     }
 

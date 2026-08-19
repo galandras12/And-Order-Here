@@ -24,8 +24,11 @@ JWT-alapú bejelentkezés, natív HTML/CSS/JavaScript kliensek — külső front
 keretrendszer nélkül. Eddig a projektváz, az adattárolási réteg, az
 autentikáció, a valós idejű réteg, az admin menükezelés, az asztaltérkép-
 szerkesztő, a pincér élő asztaltérképe, a rendelésfelvétel, az élő
-státuszkövetés, a konyhai munkapult és a blokknyomtatás készült el; a fizetés és
-a készletkezelés a következő szegmensekben jön.
+státuszkövetés, a konyhai munkapult, a blokknyomtatás, az online vendégfelület,
+a fizetési folyamat, a logisztikai pénzügyi áttekintő (forgalmi összesítő,
+blokk-archívum, napi kasszazárás), a vezetőségi riportok, valamint a teljes
+reszponzív és design-finomhangolás készült el; a készletkezelés és a beszerzés a
+következő szegmensekben jön.
 
 ## Indítás
 
@@ -101,8 +104,24 @@ fut (`npm run dev` ugyanez, `node --watch` automatikus újraindítással).
 | `GET/POST /api/admin/zones` | csak `admin` — zónák |
 | `PUT/DELETE /api/admin/zones/:id` | csak `admin` |
 | `GET /api/admin/users` | csak `admin` |
-| `GET /api/logistics/*` | csak `logistics` |
-| `GET /api/online/*` | publikus |
+| `GET /api/admin/reports/top-items` | csak `admin` — legnépszerűbb tételek (`categoryId`, `limit`) |
+| `GET /api/admin/reports/peak-hours` | csak `admin` — óránkénti forgalom |
+| `GET /api/admin/reports/waiter-performance` | csak `admin` — pincérenkénti teljesítmény |
+| `GET /api/admin/reports/kitchen-times` | csak `admin` — átlagos elkészítési idő (`categoryId`, `menuItemId`) |
+| `GET /api/admin/reports/filter-options` | csak `admin` — kategóriák és tételek a szűrőkhöz |
+| `GET /api/logistics/summary` | `logistics` vagy `admin` — forgalmi összesítő (`dateFrom`, `dateTo`) |
+| `GET /api/logistics/orders` | ugyanaz — blokk-archívum, szűrhető és lapozható |
+| `GET /api/logistics/orders/:id` | ugyanaz — a blokk olvasható változata + fizetések |
+| `GET /api/logistics/filter-options` | ugyanaz — asztalok, pincérek, fizetési módok a szűrőhöz |
+| `GET /api/logistics/cash-closing` | ugyanaz — korábbi kasszazárások |
+| `GET /api/logistics/cash-closing/preview` | ugyanaz — a rendszer által várt készpénz |
+| `POST /api/logistics/cash-closing` | ugyanaz — zárás rögzítése |
+| `GET /api/online/restaurant` | publikus — a vendégnek szóló alapadatok (név, cím, telefon) |
+| `GET /api/online/menu` | publikus — kategóriák és csak elérhető tételek |
+| `GET /api/online/extras` | publikus — kiegészítők |
+| `POST /api/online/orders` | publikus — vendég rendelés (`guestName` + kosár) |
+| `GET /api/orders/:id/payments` | pincér/admin, vagy vendég **online** rendelésre — fizetési állapot |
+| `POST /api/orders/:id/payments` | ugyanaz — fizetés rögzítése |
 
 Hitelesítés: `Authorization: Bearer <token>` fejléc. Token nélkül `401`,
 rossz szerepkörrel `403` a válasz.
@@ -130,7 +149,7 @@ jelszó-ellenőrzés, a token-kezelés és a middleware változatlan marad.
 
 ## Admin felület
 
-A `/admin` hat fülre bomlik:
+A `/admin` hét fülre bomlik:
 
 | Fül | Mit tud |
 | --- | --- |
@@ -140,6 +159,7 @@ A `/admin` hat fülre bomlik:
 | Extrák | kiegészítők hozzáadása, szerkesztése, törlése |
 | Asztaltérkép | vizuális szerkesztő: asztalok mozgatása, méretezése, forgatása, zónák kijelölése |
 | Felhasználók | lista (szerkesztés későbbi szegmensben) + valós idejű eseménynapló |
+| Riportok | vezetőségi statisztikák: legnépszerűbb tételek, forgalmi csúcsidőszakok, pincérenkénti teljesítmény, konyhai elkészítési idők — lásd a [Vezetőségi riportok](#vezetőségi-riportok) szakaszt |
 
 Az elérhetőség kapcsoló váltása `menu_item:availability_changed` socket eseményt
 küld a `server/sockets/emitters.js`-en keresztül, így a pincér és az online
@@ -248,6 +268,11 @@ server/
     floorStateService.js  asztalállapotok és online összesítő (pincér nézet)
     reservationService.js foglalás validációval és ütközés-ellenőrzéssel
     orderService.js       rendelésfelvétel: étlap, kosár validáció, leadás
+    kitchenService.js     konyhai munkapult: ételblokkok, állapotléptetés
+    receiptService.js     vendégblokk összeállítása (ÁFA, szervizdíj, végösszeg)
+    paymentService.js     fizetés rögzítése, fizetettségi állapot, lezárás
+    logisticsService.js   forgalmi összesítő, blokk-archívum, kasszazárás
+    reportService.js      vezetőségi riportok: top tételek, csúcsórák, teljesítmény
   middleware/
     requireAuth.js  JWT ellenőrzés az Authorization fejlécből
     requireRole.js  szerepkör szerinti szűrés
@@ -264,11 +289,22 @@ server/
   utils/
     password.js     bcrypt jelszó- és PIN-hash
     rateLimiter.js  memóriában tartott próbálkozás-korlátozás
+    dateRange.js    közös időszak-feloldás (helyi idő szerinti naphatárok)
     validation.js   mezőnkénti validáció, tipizált hibák (400/404/409)
   config.js     .env alapú konfiguráció
   index.js      belépési pont
 public/
-  logistics/ online/   felületenkénti statikus fájlok
+  logistics/
+    index.html  fülek: áttekintés, blokk-archívum, napi zárás
+    app.js      közös mag: fülek, API hívás, dátum- és pénzformázás
+    dashboard.js  forgalmi összesítő kártyák és mód szerinti bontás
+    orders.js     szűrhető archívum + olvasható blokk oldalsó panelen
+    closing.js    kasszazárás: várt egyenleg, eltérés, korábbi zárások
+    logistics.css fehér-fekete, adatközpontú stílus
+  online/
+    index.html  vendég étlap, kosár, visszaigazolás
+    app.js      menü, kosár, leadás, téma váltás
+    online.css  mobil-first, világos/sötét témás vendég stílus
   kitchen/
     index.html  konyhai munkapult (blokkok, léptető gombok)
     app.js      betöltés, valós idejű frissülés, állapotléptetés
@@ -285,12 +321,14 @@ public/
     index.html  fülek: étterem, kategóriák, tételek, extrák, felhasználók
     app.js      közös mag: fülek, API hívás, űrlap- és hibakezelés
     restaurant.js  menu.js  extras.js  users.js   nézetenkénti modulok
+    reports.js     vezetőségi riportok natív SVG diagramokkal
     floorPlan.js   vizuális asztaltérkép szerkesztő
     admin.css  floor-plan.css   admin-specifikus stílus
   shared/
     auth.js         bejelentkezés, token tárolás, fetch wrapper
     socketClient.js Socket.io kapcsolat, újracsatlakozás, állapotjelző
     eventLog.js     beérkező események megjelenítése a felületen
+    uiState.js      közös betöltési és hibaállapot újrapróbálkozással
   assets/     közös CSS
   index.html  felületválasztó
 shared/
@@ -470,6 +508,389 @@ készül"). Erre épül majd a 16. szegmens időtúllépés-riasztása.
 A felület tablet és fali monitor méretre is optimalizált: kártyarács, nagy
 betűk, legalább 48 px magas gombok — párás, mozgás közbeni pillantásra tervezve.
 
+## Online rendelés (vendégfelület)
+
+A `/online` **bejelentkezés nélkül**, bárki számára elérhető. A vendég
+kategóriák szerint böngészi az étlapot, kosárba tesz, majd a nevét megadva
+leadja a rendelést.
+
+**Ugyanaz az étlap, egy forrásból.** A `GET /api/online/menu` a
+`menuService.getAvailableMenu()` függvényt hívja — ugyanazt, amit a pincér
+felület rendelésfelvétele is —, így nem tud szétcsúszni, hogy melyik felületen
+mi számít elérhető tételnek. Az admin által elfogyottra állított tétel azonnal
+eltűnik a vendég étlapjáról is (`menu_item:availability_changed` socket
+eseményre, újratöltés nélkül).
+
+**Kosár**: mennyiség, szabad szöveges megjegyzés és kiegészítők felárral —
+ugyanaz a logika, mint a pincér kosarában, vendégbarát felülettel. A kosár a
+leadásig `localStorage`-ban is megmarad, és a lebegő kosárgomb mindig mutatja a
+tételszámot és az összeget.
+
+**Vendégadat**: csak a **név** kötelező, hogy a kiszolgáló kollégának legyen
+mihez kötnie a rendelést. E-mail és telefonszám bekérése — és a hozzá tartozó
+adatkezelési tájékoztató — a 16. szegmens GDPR alpontjában készül el; a kódban
+ez `TODO` kommenttel jelölve van.
+
+**Leadás után** a rendelés `type: online`, `tableId: null`, a tételek `pending`
+állapotban, és ugyanaz az `order:created` esemény megy ki, mint a pincéri
+leadásnál. Ezért a térkép autó ikonja (6. szegmens) és a konyhai munkapult
+(9. szegmens) **változtatás nélkül** kezeli az online rendelést — a szakács
+pedig nem látja, hogy online eredetű. A vendég visszaigazoló képernyőt kap: a
+rendelés összegzését, a **hatjegyű azonosítót** (ugyanaz, ami a blokkra kerül) és
+a várakozásról szóló üzenetet.
+
+**Fizetés**: a visszaigazoláson ott a *Tovább a fizetéshez* gomb; a tényleges
+fizetési folyamat a 12. szegmensben készül el, itt egyelőre a helyét jelzi.
+
+**Design**: mobil-first (a vendégek jellemzően telefonról nyitják meg),
+világos/sötét témaváltóval — a választás `localStorage`-ba kerül, és már a
+rajzolás előtt érvényre jut, hogy ne villanjon fel a másik téma. Az
+érintőfelületek legalább 44 px magasak, a kosár pedig alulról felcsúszó lapon
+érhető el.
+
+**Publikus írás korlátozva**: a `POST /api/online/orders` kliensenként (IP)
+korlátozott (5 percenként 12 rendelés), hogy egy kliens ne tudja elárasztani a
+konyhát.
+
+## Fizetés
+
+A fizetés **rendelés szintű**, mindkét oldalról ugyanaz a végpont:
+`POST /api/orders/:id/payments`. Ezért nem a `/api/waiter` vagy `/api/online` alá
+került — a pincér (bejelentkezve) és a vendég (az online pénztárból,
+bejelentkezés nélkül) is ezt hívja, így a fizetés egy helyen, egyfajta szabály
+szerint rögzül.
+
+**Nincs valódi fizetési szolgáltató bekötve.** A kártyás / SZÉP kártyás /
+kuponos fizetés itt annyit jelent, hogy rögzítjük a **fizetés módját és
+összegét** — a tényleges tranzakció a helyszínen, kártyaterminálon történik. A
+hely elő van készítve: egy későbbi szegmensben a `paymentService.recordPayment`
+elé kerülhet a szolgáltató (SimplePay, Barion, Stripe) hívása, és csak a sikeres
+tranzakció után kell menteni a rekordot.
+
+**Adatmodell.** A `payments` kollekció rekordjai (`orderId`, `method`, `amount`,
+`paidAt`). Egy rendeléshez **több fizetés is tartozhat** — részben kártya,
+részben készpénz —, ezért az összegeket mindig összegezve nézzük. A rendelés
+`paymentStatus` mezője akkor vált `paid`-re, ha a befizetések elérik a
+végösszeget (ÁFÁ-val és szervizdíjjal együtt, ugyanabból a számításból, amiből a
+blokk készül). Az összeg elhagyható a kérésben — alapértelmezésben a teljes
+hátralék —, de megadható kevesebb (részfizetés) és több is (a borravaló későbbi
+kezeléséhez).
+
+**A fizetettség külön a rendelés életciklusától.** A `paymentStatus` nem
+ugyanaz, mint az `order.status`: egy online rendelést a vendég már a leadáskor
+kifizethet, miközben a konyhának még dolga van vele. A rendelés akkor zárul le
+(`status: paid`, az asztal felszabadul, a nyitottak közül kikerül), ha
+**kifizették és minden tételét kiszolgálták** — ezt a `closeIfSettled` figyeli,
+és a fizetés, illetve az utolsó kiszolgálás egyaránt kiválthatja.
+
+**Jogosultság.** Bejelentkezett pincér és admin a saját étterme bármelyik
+rendelését fizettetheti. Bejelentkezés nélkül **kizárólag online rendelés**
+érhető el, és csak a rendelés azonosítójának ismeretében — az azonosító nanoid
+(kitalálhatatlan), és a vendég a saját leadása után kapja meg, vagyis maga az id
+a belépő. A publikus írás IP-nként korlátozott.
+
+### Pincér oldal
+
+A rendelés-áttekintőben jelvény mutatja a fizetettséget (*Fizetésre vár · összeg*
+vagy *Kifizetve · összeg · mód*), mellette a **Fizetés rögzítése** gomb. A
+választó nagy, egyértelmű gombokkal kínálja az öt módot (bankkártya, SZÉP kártya,
+kupon, készpénz, utólagos ATM), az összeg pedig előre kitöltve, de átírható.
+
+**Nyomtatás előtti emlékeztető**: ha a rendelés még nincs kifizetve, a
+*Nyomtatás* gomb először figyelmeztet — de nem tilt: onnan lehet fizetést
+rögzíteni, vagy „Nyomtatás mindenképp" gombbal továbbmenni. Életszerű, hogy néha
+fordított a sorrend.
+
+### Online pénztár
+
+A *Tovább a fizetéshez* gomb a **Pénztár** nézetet nyitja: a rendelés
+összegzése, a szerverről kért végösszeg (részösszeg + ÁFA + szervizdíj), és a
+fizetési módok — bankkártya, SZÉP kártya, kupon, valamint egy egyértelműen
+jelölt **„Fizetés a helyszínen (készpénz vagy ATM)"** opció. Kártyás/SZÉP/kupon
+választásnál a felület jelzi, hogy **szimulált** visszaigazolásról van szó.
+Sikeres rögzítés után a vendég visszaigazolást lát: rendelés azonosító, fizetett
+összeg és fizetési mód.
+
+## Vezetőségi riportok
+
+Az admin felület **Riportok** füle négy kérdésre válaszol egy nézetben, **közös
+dátumtartomány-választóval** (alapértelmezés: az elmúlt 7 nap, gyors gombok:
+*Ma*, *Tegnap*, *7 nap*, *30 nap*). A négy lekérdezés párhuzamosan indul és
+együtt frissül — a vezetőnek egy dátumot kell beállítania.
+
+**Nincs külön riport-tábla.** Minden szám a már meglévő `orders`, `orderItems`,
+`menuItems` és `users` kollekciókból számolódik ki, a lekérdezés pillanatában, a
+repository rétegen keresztül. Ezen az adatmennyiségen ez gyorsabb és egyszerűbb,
+mint előre számolt összesítőket karbantartani — és nem tud elavulni.
+
+Két döntés minden riportra érvényes:
+
+- a **sztornózott** rendelések mindenhonnan kimaradnak (nem fogytak el, nem
+  hoztak bevételt, a konyhai idejük sem érvényes);
+- a **bevétel bruttó** — ugyanaz a szám, amit a vendég fizet, és amit a blokk,
+  illetve a logisztikai összesítő mutat. A számítás a
+  `receiptService.calculateTotals`-ból jön, hogy egyetlen helyen legyen
+  definiálva. Az ÁFA- és szervizdíj-kulcs az étterem **aktuális** beállítása, így
+  egy kulcsváltoztatás visszamenőleg is átszámolja a régi időszakokat — a
+  rendszer nem tárol kulcs-történetet.
+
+### Legnépszerűbb tételek
+
+Menütételenként az eladott darabszám és a bevétel, csökkenő sorrendben, opcionális
+kategóriaszűrővel. Rangsorolt lista vízszintes sávokkal; a sorok alatt a
+kategória, az egységár és az is, hány **külön rendelésben** szerepelt a tétel —
+ebből látszik, hogy tényleg széles körben népszerű-e, vagy csak egy nagy rendelés
+vitte fel.
+
+### Forgalmi csúcsidőszakok
+
+Óránkénti bontás (0–23) a rendelés felvételének **helyi idő** szerinti órája
+alapján — ez a személyzet beosztásának tervezéséhez használható érték. Mind a 24
+óra megjelenik akkor is, ha üres, így látszik a zárva tartás, és a tengely nem
+csúszik össze két nap között. A csúcsóra ki van emelve és névvel szerepel a
+fejlécben; egy kapcsolóval a rendelésszám és a bevétel között lehet váltani
+(újabb kérés nélkül, a válasz mindkettőt tartalmazza).
+
+### Pincérenkénti teljesítmény
+
+Kiszolgált rendelések száma, tételszám, bevétel, átlagos kosárérték és átlagos
+rendelés-lezárási idő (a rendelés felvétele és az **utolsó** tétel kiszolgálása
+között eltelt idő). A táblázat oszlopfejlécre kattintva rendezhető.
+
+A lezárási idő csak a **teljesen kiszolgált** rendelésekből számol: egy még
+nyitott asztal ideje folyamatosan nőne, és elhúzná az átlagot. A cella
+buboréksúgója megmutatja, hány lezárt rendelésből jött az átlag — mintaszám
+nélkül egy átlag félreérthető. Az online rendelésekhez nem tartozik pincér, ezért
+nem szerepelnek ebben a riportban.
+
+### Átlagos konyhai elkészítési idő
+
+A `preparingStartedAt` és a `readyAt` közötti idő menütételenként és
+kategóriánként, mintaszámmal, leggyorsabb és leglassabb méréssel — a leglassabb
+tétel van elöl, mert azt kell optimalizálni.
+
+Csak azok a tételek adnak mintát, amelyeknél **mindkét** időbélyeg megvan: a
+mérés bevezetése előtt felvett tételekhez nincs `readyAt` (nem állítható helyre),
+és a még készülő tétel ideje sem végleges. A válasz `missingSampleCount` mezője
+megmutatja, hány eladott tételsor maradt így ki — a felület ezt ki is írja, hogy
+az átlag megbízhatósága látszódjon. Egy perc alatti mérés másodpercben jelenik
+meg: a „0 perc" úgy nézne ki, mintha nem lenne adat.
+
+### Diagramok külső könyvtár nélkül
+
+A projekt egyetlen kliens oldali függőséget sem tölt be CDN-ről, és nincs
+bundler sem. Egy diagram-könyvtár bevezetése vagy új CDN-függést, vagy egy
+~200 KB-os vendor fájlt jelentene a repóban — négy egyszerű ábráért. Az
+adatmennyiség pici (24 oszlop az óradiagramon, 10 sor a rangsorban), ehhez nem
+kell rajzolómotor: az óradiagram natív `<svg>` téglalapokból áll, a rangsor pedig
+tiszta HTML + CSS sávokból. Így a diagram az admin felület témáját (kék-fekete,
+CSS változók) közvetlenül örökli, és nagyítva is éles marad.
+
+Egy részlet, ami könnyen elromlik: az oszlopok nyújtott koordinátarendszerben
+rajzolódnak (`preserveAspectRatio="none"`), hogy kitöltsék a szélességet — ez a
+szöveget is vízszintesen nyújtaná, ezért az óratengely feliratai HTML-ben
+készülnek az SVG alatt.
+
+### Teljesítmény
+
+Minden riport először **időszakra szűr a repository rétegben**
+(`orderRepository.getBetween`, `orderItemRepository.getBetween`), és csak a
+találatokhoz tölti be a kapcsolódó rekordokat (`getByIds`). Egy heti riport így
+nem olvassa végig a teljes historikus adatot, és a szűrési logika változatlanul
+átvihető egy SQL `WHERE` feltételbe, ha a tárolás később adatbázisra vált.
+
+Az időszak feloldása (naphatárok helyi idő szerint, validáció, maximális
+hossz) a közös `server/utils/dateRange.js`-ben van — a logisztikai összesítő és
+a riportok ugyanazt a szabályt használják, csak más alapértelmezéssel (a
+logisztikánál a mai nap, a riportoknál az elmúlt 7 nap). Két felület nem
+mutathat mást ugyanarra a dátumra.
+
+## Logisztika — pénzügyi áttekintő
+
+A `/logistics` felület három fület kapott: **Áttekintés**, **Blokk-archívum**,
+**Napi zárás**. Fehér-fekete, adatközpontú megjelenés — a hangsúly az
+olvashatóságon van, nem a látványon. Fő használati eset asztali gép/tablet, de
+kisebb kijelzőn is használható marad (a táblázatok vízszintesen görgethetők).
+
+A felület **nem tárol új pénzügyi adatot**: minden szám a meglévő `orders`,
+`orderItems` és `payments` kollekciókból számolódik, a repository rétegen
+keresztül. A végösszegek ugyanazzal a `receiptService` logikával készülnek, mint
+a kinyomtatott blokk — így egy utólagos ellenőrzésnél biztosan ugyanaz jön ki.
+
+**Két időbélyeg, két kérdés.** Az időszak szűrése szándékosan nem egyetlen
+dátumra épül:
+
+- a **pénzügyi** számok (bevétel, fizetési mód szerinti bontás, kasszazárás) a
+  fizetés rögzítésének időpontja (`payments.paidAt`) szerint — ez az, ami aznap
+  ténylegesen befolyt;
+- a **darabszámok** (rendelések típus szerint, kifizetetlenek) a rendelés
+  felvételének időpontja (`orders.createdAt`) szerint — ez az, amit aznap
+  felvettek.
+
+Egy előző nap felvett, de ma kifizetett rendelés így a mai bevételben, de a
+tegnapi rendelésszámban jelenik meg. A felület a fejlécben kiírja ezt, hogy ne
+lehessen félreérteni. A napok határai **helyi idő** szerint képződnek (nem UTC):
+a „mai nap" az étteremben dolgozó ember napja.
+
+### Áttekintés
+
+Összesítő kártyák (bevétel, rendelésszám, helyszíni/online bontás, kifizetetlen
+összeg) és a fizetési mód szerinti bontás táblázatban, egyszerű sávdiagrammal —
+rajzoló könyvtár nélkül, hogy nyomtatásban és nagyítva is olvasható maradjon. A
+dátumtartomány-választó mellett gyors gombok: *Ma*, *Tegnap*, *7 nap*, *30 nap*.
+
+A kifizetetlen kártya csak akkor kap piros kiemelést, ha tényleg van behajtani
+való; az összeg a **hátralékot** mutatja, nem a teljes végösszeget (részfizetés
+esetén ez nem ugyanaz). Tétel nélküli rendelés nem kerül a figyelmeztetésbe.
+
+A logisztikai felület megkapja a fizetéskor kiváltott `order:payment_recorded`
+eseményt, így a nyitva hagyott áttekintő újratöltés nélkül frissül.
+
+### Blokk-archívum
+
+Szűrhető, lapozható rendeléslista: időszak, típus (helyszíni/online), asztal,
+pincér, fizetési mód, fizetettség, sor/oldal. Egy sorra kattintva (vagy Enterrel)
+oldalsó panelen nyílik a rendelés részletes nézete: a **10. szegmens nyomtatási
+sablonjának olvasható változata** — ugyanaz az adat és felépítés (fejléc,
+tételek extrákkal, összesítés, lábléc), de képernyőre szánva, nyomtatás nélkül.
+Alatta a rögzített fizetések listája, és — ha van — a hátralék.
+
+Itt a kiszolgálási feltétel nem érvényes: egy még le sem zárt rendelés blokkja is
+megnézhető (a `receiptService.getReceiptView` ugyanazt állítja össze, mint a
+`getReceipt`, csak az ellenőrzés nélkül). Nyomtatni innen nem kell — ez az
+utólagos ellenőrzés nézete.
+
+### Napi zárás
+
+A rendszer kiszámolja a **várt készpénz-egyenleget** (a `cash` és `atm_later`
+módú fizetésekből az adott időszakra), a munkatárs beírja a **ténylegesen
+leszámolt** összeget, az eltérés pedig gépelés közben, azonnal látszik —
+egyezésnél zölden, hiánynál pirosan, többletnél külön jelöléssel.
+
+A várt összeget **mindig a szerver számolja újra**: a kliens csak a leszámolt
+összeget és a jegyzetet küldi, így a rögzített eltérés nem hamisítható. A zárás
+a `cashClosings` kollekcióba kerül, és nem módosítja a rendeléseket vagy a
+fizetéseket — csak egy pillanatkép az egyeztetésről. Ugyanarra a napra több
+zárás is rögzíthető (délelőtti és délutáni műszak); ha már van, a felület jelzi,
+de nem tiltja. A korábbi zárások lent, teljes történettel listázódnak.
+
+Egy megjegyzés a számításról: a várt egyenleg a **rögzített fizetésekből** dolgozik,
+nem a „teljesen kifizetett rendelésekből". Ha egy asztal felig kártyával, felig
+készpénzzel fizetett, a készpénzes rész akkor is a fiókban van, ha a rendelés
+maga még nincs teljesen rendezve.
+
+## Design és reszponzivitás
+
+A rendszer öt felülete **egy termék**: közös alapra épülnek, és csak a
+szerepkörhöz tartozó színkód különbözteti meg őket. Ezt a
+`public/assets/base.css` fogja össze — mind az öt felület ezt tölti be először,
+és utána teszi hozzá a sajátját.
+
+### Design-tokenek
+
+A base.css `:root` blokkja adja a **teljes skálát**: színek, tipográfia
+(`--text-xs` … `--text-2xl`), négyes léptékű térköz (`--space-1` … `--space-10`),
+lekerekítés (`--radius-sm` / `--radius` / `--radius-lg` / `--radius-pill`),
+árnyékok (`--shadow-sm` / `-md` / `-lg`) és az érintési célméret (`--tap-min`).
+A felületek a `data-interface` attribútumon keresztül csak a színeket írják
+felül:
+
+| Felület | Kiemelőszín | Téma |
+| --- | --- | --- |
+| pincér | zöld `#35c46a` | sötét |
+| szakács | sárga `#f2c744` | sötét |
+| admin | kék `#4a9eff` | sötét |
+| logisztika | grafit `#1f2937` | világos |
+| online | arany `#e0a340` | sötét, világos váltóval |
+
+A világos felületek az árnyék-tokeneket is felülírják: a sötét témára hangolt
+árnyék fehér háttéren piszkosnak látszana.
+
+### Töréspontok
+
+Egységesen három (plusz egy speciális). A CSS nem enged változót a `@media`
+feltételben, ezért ezek szó szerinti értékek — a base.css fejléce sorolja fel
+őket, hogy egy helyen legyen a hivatkozás:
+
+| Töréspont | Mire |
+| --- | --- |
+| `max-width: 480px` | mobil (álló telefon) |
+| `max-width: 768px` | tablet álló / nagy telefon |
+| `max-width: 1024px` | kis laptop / tablet fekvő |
+| `min-width: 1600px` | fali kijelző (csak a konyhai munkapult) |
+
+A felületek többsége mobil-first, **két kivétellel**: a pincér és a szakács
+felület alapesete a tablet, mert az a napi munkaeszköz — ott a mobil a szűkítés.
+
+Amit a töréspontok érdemben átrendeznek:
+
+- **Pincér** — 1024 px alatt a kosár a menü alá kerül; 480 px alatt alsó lebegő
+  sávvá zsugorodik: a tétellista magán belül görgethető, a végösszeg és a
+  „Rendelés leadása" gomb mindig látszik. A kategóriafülek vízszintesen
+  görgethetők.
+- **Szakács** — 768 px alatt egyoszlopos blokk-lista; 1600 px felett szélesebb
+  oszlopok és nagyobb betűk, hogy 2–3 méterről is olvasható legyen.
+- **Admin** — 1024 px alatt az asztaltérkép-szerkesztő és az oldalsó panel
+  egymás alá kerül. Keskeny **és érintős** kijelzőn figyelmeztetés jelenik meg,
+  hogy a pontos pozicionálás asztali gépen kényelmesebb — de a szerkesztő
+  használható marad, semmi nincs letiltva.
+- **Logisztika** — 480 px alatt a blokk-archívum táblázata **kártyás nézetre
+  vált**: minden sor egy kártya, a cellák a saját fejlécüket viszik magukkal
+  (`data-label`). A számokat összehasonlító táblázatok maradnak vízszintesen
+  görgethetők, mert ott az oszlopos olvasás a lényeg.
+- **Online** — 768 px felett az étlap több hasábra bomlik, a felcsúszó lap
+  párbeszédablakká szelídül; 1024 px felett a tartalom 1100 px-nél megáll (a
+  túl hosszú sor olvashatatlan), a lebegő kosár pedig a jobb alsó sarokba
+  húzódik.
+
+### Érintésbarát kezelés
+
+Ahol nincs pontos mutató (`@media (pointer: coarse)`), **minden** kattintható
+elem felhúzódik a 44 px-es ajánlott célméretre — gombok, legördülők, beviteli
+mezők egyaránt. Egérrel dolgozó gépen a sűrű admin- és logisztikai táblázatok
+megtarthatják a tömörebb sorokat.
+
+A Canvas-alapú nézetek saját gesztuskezelést kapnak: a pincér asztaltérképe
+egy ujjal pásztázható, két ujjal nagyítható (`touch-action: none`, mert ott a
+pásztázás az elsődleges művelet), az admin szerkesztőjében viszont a vászon
+fölött a lap görgethető marad (`pan-x pan-y`), és csak a megfogott asztal
+kapcsolja ki a görgetést. A belül görgethető panelek (kosár, felcsúszó lap,
+oldalsó panel) `overscroll-behavior: contain`-nel nem húzzák magukkal a lapot.
+
+### Betöltés, hiba, visszajelzés
+
+- **Betöltés**: skeleton helyőrzők (`.skeleton`) és `.spinner`, hogy ne ugráljon
+  az elrendezés az adat megérkezésekor. Csökkentett mozgás beállításnál az
+  animáció kikapcsol, de a helyőrző látszik.
+- **Hálózati hiba**: a `public/shared/uiState.js` egységes hibadobozt ad
+  **újrapróbálkozás gombbal**. Korábban minden felület máshogy jelzett — volt,
+  ahol csak egy pár másodpercre felvillanó toast, volt, ahol semmi. A hibaüzenet
+  most megmarad, amíg meg nem szűnik a hiba, és nem kell újratölteni a lapot.
+- **Kapcsolat-állapot**: ugyanaz a jelző mind az öt felületen. A személyzeti
+  felületeken folyamatosan látszik; a vendégoldalon **csak akkor jelenik meg, ha
+  megszakadt** a kapcsolat — az „élő kapcsolat" felirat a vendégnek nem mond
+  semmit, a megszakadt viszont igen. Mobilon a jelző ponttá zsugorodik, hogy ne
+  takarja a képernyő alján lévő fő gombot; hiba esetén viszont kiírja a szöveget.
+- **Űrlaphibák**: a `.field--error` / `.field__error` / `.field__hint` a
+  base.css-ben van, egy helyen — egy hibás ár az adminban ugyanúgy néz ki, mint
+  egy hibás összeg a kasszazárásnál.
+
+### Teljesítmény
+
+A socket-események **összevontan** frissítenek: a pincér felület 150 ms-on belül
+érkező eseményeit egyetlen újratöltéssé vonja össze (a konyhai munkapult
+ugyanígy), különben egy asztalnál több egyidejű eseményből minden egyes darab
+külön hálózati kérést és teljes Canvas-újrarajzolást indítana. Az ablak
+átméretezése `requestAnimationFrame`-re van kötve, így képkockánként legfeljebb
+egyszer rajzol újra.
+
+### Kézi tesztelés
+
+A `TESTING-CHECKLIST.md` eszközkategóriánként (mobil / tablet / asztali gép /
+fali kijelző) és felületenként sorolja fel a végleges átadás előtt
+végigjátszandó forgatókönyveket — beleértve a hálózati hiba és a valós idejű
+frissülés ellenőrzését is.
+
 ## Valós idejű réteg (Socket.io)
 
 A Socket.io ugyanarra a `http.Server` példányra csatlakozik, mint az Express —
@@ -505,6 +926,7 @@ onnan olvassa, így nem lehet elgépelni az eseményneveket:
 | --- | --- |
 | `order:created` | waiters, kitchen, admin (+ online, ha online rendelés) |
 | `order_item:added` | waiters, kitchen, admin (+ online, ha online rendelés) |
+| `order:payment_recorded` | waiters, admin, logistics — fizetés rögzült |
 | `order_item:status_changed` | waiters, kitchen, admin, logistics |
 | `order_item:served` | waiters, kitchen, admin, logistics |
 | `table:status_changed` | waiters, admin |

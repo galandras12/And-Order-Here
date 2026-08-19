@@ -117,6 +117,25 @@ function emitOrderItemServed(restaurantId, orderItem, order = null) {
   });
 }
 
+/**
+ * Fizetes rogzult egy rendelesre.
+ *
+ * A pincer (asztalterkep, rendeles-attekinto), az admin es a logisztika kapja
+ * meg - utobbi a 13. szegmens osszesitesehez. A konyhat nem erinti: a fizetes
+ * nem valtoztat azon, mit kell elkesziteni.
+ *
+ * @param {string} restaurantId
+ * @param {{ payment: object, order: object }} payload
+ */
+function emitOrderPaymentRecorded(restaurantId, payload) {
+  const rooms = [
+    roomName(restaurantId, ROOM_KEYS.WAITERS),
+    roomName(restaurantId, ROOM_KEYS.ADMIN),
+    roomName(restaurantId, ROOM_KEYS.LOGISTICS)
+  ];
+  return emitToRooms(rooms, SOCKET_EVENTS.ORDER_PAYMENT_RECORDED, payload);
+}
+
 /** Asztal allapotvaltasa (szabad / foglalt / fizetesre var). */
 function emitTableStatusChanged(restaurantId, table) {
   const rooms = [
@@ -172,6 +191,7 @@ module.exports = {
   emitOrderItemsAdded,
   emitOrderItemStatusChanged,
   emitOrderItemServed,
+  emitOrderPaymentRecorded,
   emitTableStatusChanged,
   emitTableLayoutChanged,
   emitTableReserved,

@@ -35,9 +35,19 @@
         loaded[name] = true;
       }
 
-      return Promise.resolve(handler.load(force)).catch(function (err) {
-        app.toast(err.message, true);
-      });
+      return Promise.resolve(handler.load(force))
+        .then(function (result) {
+          window.AndOrderUiState.clear('[data-load-error]');
+          return result;
+        })
+        .catch(function (err) {
+          // A toast eltunik; a hibadoboz kint marad, amig ujra nem probaljuk.
+          window.AndOrderUiState.error('[data-load-error]', err, {
+            title: 'Az adatok betöltése nem sikerült.',
+            retry: function () { return app.loadPanel(name, true); }
+          });
+          app.toast(err.message, true);
+        });
     },
 
     /** Egy masik modul adatainak frissitese (pl. kategoria valtozott -> tetelek). */

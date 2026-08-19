@@ -315,7 +315,29 @@ async function deleteExtra(restaurantId, extraId) {
   return { id: extraId, deleted: true };
 }
 
+/* ---------------------------------------------------------- rendelesi etlap */
+
+/**
+ * Rendelesfelvetelhez hasznalt etlap: kategoriak, **csak elerheto** tetelek es
+ * az extrak, nev szerint rendezve.
+ *
+ * Egy forras mindharom felhasznalonak: a pinceri rendelesfelvetel (7. szegmens)
+ * es az online vendegfelulet (11. szegmens) is ezt hivja, ugyanabbol az
+ * adatbol, amit az admin szerkeszt (4. szegmens) - igy nem tud szetcsuszni,
+ * hogy melyik feluleten mi latszik.
+ */
+function getAvailableMenu(restaurantId) {
+  return {
+    categories: listCategories(restaurantId),
+    items: listItems(restaurantId, { availableOnly: true })
+      .sort((a, b) => a.name.localeCompare(b.name, 'hu')),
+    extras: listExtras(restaurantId)
+  };
+}
+
 module.exports = {
+  // rendelesi etlap (pincer + online)
+  getAvailableMenu,
   // kategoriak
   listCategories,
   getCategory,

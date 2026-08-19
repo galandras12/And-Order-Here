@@ -53,9 +53,19 @@
       <button type="button" class="admin-nav__tab" data-tab="extras">Extrák</button>
       <button type="button" class="admin-nav__tab" data-tab="floor">Asztaltérkép</button>
       <button type="button" class="admin-nav__tab" data-tab="users">Felhasználók</button>
+      <button type="button" class="admin-nav__tab" data-tab="reports">Riportok</button>
     </nav>
 
     <main class="app-main">
+
+  <!-- Közös betöltési hibaállapot: megmarad, és újrapróbálkozást kínál. -->
+  <div class="state-box" data-load-error hidden>
+    <p class="state-box__text">
+      <span class="state-box__title"></span>
+      <span class="state-box__detail"></span>
+    </p>
+    <button type="button" class="state-box__retry">Újrapróbálom</button>
+  </div>
 
       <!-- A) Étterem alapadatok -->
       <section class="admin-panel" data-panel="restaurant">
@@ -281,6 +291,17 @@
 
       <!-- E) Asztaltérkép szerkesztő -->
       <section class="admin-panel" data-panel="floor" hidden>
+        <!--
+          Kis kijelzőn a finom pozicionálás nehézkes, de nem tiltjuk le:
+          a figyelmeztetés csak jelzi, hogy asztali gépen kényelmesebb.
+          A CSS csak érintőképernyős, keskeny nézetben mutatja meg.
+        -->
+        <p class="small-screen-hint" data-floor-small-screen-hint>
+          <strong>Kis kijelzőn vagy.</strong> A szerkesztő működik érintéssel is, de az asztalok
+          pontos elhelyezése asztali gépen, egérrel lényegesen kényelmesebb. Tipp: a kijelölt
+          asztal a nyílbillentyűkkel finomhangolható.
+        </p>
+
         <div class="card">
           <div class="floor-toolbar">
             <button class="btn btn--inline" type="button" data-floor-add-table>+ Új asztal</button>
@@ -432,6 +453,134 @@
         </div>
       </section>
 
+      <!-- Vezetőségi riportok és statisztikák -->
+      <section class="admin-panel" data-panel="reports" hidden>
+
+        <!-- Közös dátumtartomány: mind a négy riport ezt használja -->
+        <form class="report-range" data-reports-range novalidate>
+          <label class="field field--inline" data-field="dateFrom">
+            <span class="field__label">Kezdő dátum</span>
+            <input class="field__input field__input--sm" type="date" name="dateFrom">
+            <span class="field__error"></span>
+          </label>
+          <label class="field field--inline" data-field="dateTo">
+            <span class="field__label">Záró dátum</span>
+            <input class="field__input field__input--sm" type="date" name="dateTo">
+            <span class="field__error"></span>
+          </label>
+          <div class="report-range__actions">
+            <button class="btn btn--inline" type="submit">Frissítés</button>
+            <button class="btn btn--ghost btn--inline" type="button" data-preset="today">Ma</button>
+            <button class="btn btn--ghost btn--inline" type="button" data-preset="yesterday">Tegnap</button>
+            <button class="btn btn--ghost btn--inline" type="button" data-preset="week">7 nap</button>
+            <button class="btn btn--ghost btn--inline" type="button" data-preset="month">30 nap</button>
+          </div>
+        </form>
+
+        <p class="report-caption" data-reports-caption>Betöltés…</p>
+
+        <!-- A) Legnépszerűbb ételek / italok -->
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h2 class="card__title">Legnépszerűbb tételek</h2>
+              <p class="card__note">Eladott darabszám szerint, csökkenő sorrendben. A bevétel bruttó (ÁFA és szervizdíj együtt).</p>
+            </div>
+            <label class="field field--inline" data-field="topCategory">
+              <span class="field__label">Kategória</span>
+              <select class="field__input field__input--sm" name="topCategoryId" data-top-category>
+                <option value="">Mind</option>
+              </select>
+            </label>
+          </div>
+
+          <ol class="rank-list" data-top-list>
+            <li class="rank-list__empty">Betöltés…</li>
+          </ol>
+        </div>
+
+        <!-- B) Forgalmi csúcsidőszakok -->
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h2 class="card__title">Forgalmi csúcsidőszakok</h2>
+              <p class="card__note" data-peak-note>Óránkénti bontás a rendelés felvételének időpontja szerint.</p>
+            </div>
+            <div class="metric-switch" data-peak-metric>
+              <button type="button" class="metric-switch__btn is-active" data-metric="orderCount">Rendelésszám</button>
+              <button type="button" class="metric-switch__btn" data-metric="revenue">Bevétel</button>
+            </div>
+          </div>
+
+          <div class="chart-wrap">
+            <div class="chart" data-peak-chart></div>
+          </div>
+        </div>
+
+        <!-- C) Pincérenkénti teljesítmény -->
+        <div class="card">
+          <h2 class="card__title">Pincérenkénti teljesítmény</h2>
+          <p class="card__note">
+            Az oszlopfejlécre kattintva átrendezhető. Az online rendelésekhez nem tartozik pincér, ezért nem szerepelnek itt.
+          </p>
+          <div class="table-wrap">
+            <table class="data-table data-table--sortable">
+              <thead>
+                <tr data-waiter-head>
+                  <th data-sort="name" class="is-sortable">Pincér</th>
+                  <th data-sort="orderCount" class="is-sortable col-num">Rendelés</th>
+                  <th data-sort="itemCount" class="is-sortable col-num">Tétel</th>
+                  <th data-sort="revenue" class="is-sortable col-num is-sorted">Bevétel</th>
+                  <th data-sort="avgOrderValue" class="is-sortable col-num">Átlagos kosár</th>
+                  <th data-sort="avgCompletionMinutes" class="is-sortable col-num">Átlagos lezárás</th>
+                </tr>
+              </thead>
+              <tbody data-waiter-body>
+                <tr><td colspan="6">Betöltés…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- D) Átlagos konyhai elkészítési idő -->
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h2 class="card__title">Átlagos konyhai elkészítési idő</h2>
+              <p class="card__note" data-kitchen-note>
+                A „készül" és az „elkészült" jelölés között eltelt idő. A leglassabb tétel van elöl.
+              </p>
+            </div>
+            <label class="field field--inline" data-field="kitchenCategory">
+              <span class="field__label">Kategória</span>
+              <select class="field__input field__input--sm" name="kitchenCategoryId" data-kitchen-category>
+                <option value="">Mind</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Menütétel</th>
+                  <th>Kategória</th>
+                  <th class="col-num">Átlag</th>
+                  <th class="col-num">Leggyorsabb</th>
+                  <th class="col-num">Leglassabb</th>
+                  <th class="col-num">Mintaszám</th>
+                </tr>
+              </thead>
+              <tbody data-kitchen-body>
+                <tr><td colspan="6">Betöltés…</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <p class="empty-note" data-kitchen-missing hidden></p>
+        </div>
+      </section>
+
     </main>
   </div>
 
@@ -443,6 +592,7 @@
   <script src="/shared/socketClient.js"></script>
   <script src="/shared/auth.js"></script>
   <script src="/shared/eventLog.js"></script>
+  <script src="/shared/uiState.js"></script>
   <!-- app.js definialja a kozos AdminApp magot, a tobbi modul erre epul -->
   <script src="/admin/app.js"></script>
   <script src="/admin/restaurant.js"></script>
@@ -450,5 +600,6 @@
   <script src="/admin/extras.js"></script>
   <script src="/admin/floorPlan.js"></script>
   <script src="/admin/users.js"></script>
+  <script src="/admin/reports.js"></script>
 </body>
 </html>

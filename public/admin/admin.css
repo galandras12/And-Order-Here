@@ -56,24 +56,7 @@
   grid-template-columns: 1fr;
 }
 
-.field--error .field__input {
-  border-color: var(--danger);
-}
-
-.field__error {
-  display: block;
-  margin-top: 5px;
-  color: var(--danger);
-  font-size: 12px;
-  min-height: 0;
-}
-
-.field__hint {
-  display: block;
-  margin-top: 5px;
-  color: var(--text-muted);
-  font-size: 12px;
-}
+/* A .field--error / .field__error / .field__hint a kozos base.css-ben van. */
 
 .field__input--sm {
   padding: 8px 10px;
@@ -311,7 +294,7 @@ select.field__input {
   background: var(--surface);
   color: var(--text);
   font-size: 14px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--shadow-md);
 }
 
 .toast--error {
@@ -325,7 +308,10 @@ select.field__input {
 
 /* ---------- Mobil ---------- */
 
-@media (max-width: 720px) {
+/* ---------- Töréspontok (15. szegmens) ---------- */
+
+/* Tablet álló / nagy telefon. */
+@media (max-width: 768px) {
   .topbar,
   .admin-nav {
     padding-left: 16px;
@@ -357,4 +343,272 @@ select.field__input {
   min-width: 170px;
   padding: 7px 10px;
   font-size: 13px;
+}
+
+/* ---------- Vezetőségi riportok (14. szegmens) ---------- */
+
+/* Közös dátumtartomány-választó a négy riport fölött. */
+.report-range {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.report-range__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.field--inline {
+  margin-bottom: 0;
+  min-width: 150px;
+}
+
+.report-caption {
+  margin: 0 0 20px;
+  padding: 0 2px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* --- A) rangsorolt lista vízszintes sávokkal --- */
+
+.rank-list {
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: rank;
+}
+
+.rank-list__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+}
+
+.rank-list__row:first-child {
+  border-top: none;
+}
+
+.rank-list__rank {
+  flex: none;
+  width: 28px;
+  padding-top: 1px;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.rank-list__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.rank-list__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.rank-list__name {
+  font-size: 15px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rank-list__numbers {
+  flex: none;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.rank-list__bar {
+  display: block;
+  height: 8px;
+  margin: 8px 0 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.rank-list__fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.rank-list__meta {
+  display: block;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.rank-list__empty {
+  padding: 14px 0;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* --- B) óránkénti oszlopdiagram (natív SVG) --- */
+
+.chart-wrap {
+  margin-top: 18px;
+}
+
+.chart__svg {
+  display: block;
+  width: 100%;
+  /* A viewBox aránytalanul nyúlik, ezért a magasságot itt rögzítjük:
+     a diagram minden képernyőszélességen ugyanolyan magas marad. */
+  height: 180px;
+}
+
+/* Óratengely: a feliratok HTML-ben, hogy a nyújtott SVG ne torzítsa őket. */
+.chart__axis {
+  display: flex;
+  margin-top: 6px;
+}
+
+.chart__grid {
+  stroke: var(--border);
+  stroke-width: 0.5;
+}
+
+.chart__bar {
+  fill: var(--accent);
+  opacity: 0.75;
+}
+
+.chart__bar:hover {
+  opacity: 1;
+}
+
+/* A csúcsóra teli színnel, hogy egy pillantásból megtalálható legyen. */
+.chart__bar--peak {
+  fill: var(--accent);
+  opacity: 1;
+}
+
+.chart__label {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.chart__scale {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: right;
+}
+
+/* --- C) rendezhető táblázat --- */
+
+.data-table--sortable th.is-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.data-table--sortable th.is-sortable:hover {
+  color: var(--text);
+}
+
+/* A rendezés iránya a fejlécben, külön ikon nélkül. */
+.data-table--sortable th.is-sorted::after {
+  content: ' ▼';
+  color: var(--accent);
+  font-size: 10px;
+}
+
+.data-table--sortable th.is-sorted.is-asc::after {
+  content: ' ▲';
+}
+
+.data-table td.is-muted {
+  color: var(--text-muted);
+}
+
+.data-table .col-strong {
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .report-range__actions {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .field--inline {
+    min-width: 0;
+    flex: 1 1 140px;
+  }
+
+  .rank-list__head {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .rank-list__name {
+    white-space: normal;
+  }
+}
+
+/* Mobil: tömörebb keretek, a diagram alacsonyabb, hogy elférjen a görgetésben. */
+@media (max-width: 480px) {
+  .app-main {
+    padding: 12px;
+  }
+
+  .card {
+    padding: 16px 14px;
+  }
+
+  .admin-nav__tab {
+    padding: 12px 14px;
+    font-size: 13px;
+  }
+
+  .section-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .chart__svg {
+    height: 150px;
+  }
+
+  /* Két számjegy is elfér, de a sűrű 3 óránkénti felirat összefolyna. */
+  .chart__label {
+    font-size: 10px;
+  }
+
+  .rank-list__row {
+    gap: 10px;
+  }
+
+  .report-range,
+  .form-actions {
+    gap: 8px;
+  }
 }

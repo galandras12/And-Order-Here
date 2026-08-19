@@ -10,6 +10,7 @@ const kitchenRouter = require('./kitchen');
 const adminRouter = require('./admin');
 const logisticsRouter = require('./logistics');
 const onlineRouter = require('./online');
+const ordersRouter = require('./orders');
 
 const router = express.Router();
 
@@ -20,19 +21,26 @@ const router = express.Router();
  *   /api/waiter/*     csak waiter
  *   /api/kitchen/*    csak cook
  *   /api/admin/*      csak admin
- *   /api/logistics/*  csak logistics
+ *   /api/logistics/*  logistics es admin
  *   /api/online/*     publikus - az online rendeles bejelentkezes nelkul is megy
+ *   /api/orders/*     vegyes - a fizetest a pincer es a vendeg is rogzitheti
  *
  * A vedelem itt, kozponti helyen dol el, igy egy uj route fajlban nem lehet
  * elfelejteni felrakni.
  */
 router.use('/auth', authRouter);
 router.use('/online', onlineRouter);
+// Feluleteken atnyulo, rendeles szintu muveletek (fizetes): a jogosultsagot a
+// router maga donti el, mert a pincer es a vendeg is ugyanezt hivja.
+router.use('/orders', ordersRouter);
 
 router.use('/waiter', requireAuth, requireRole([ROLES.WAITER]), waiterRouter);
 router.use('/kitchen', requireAuth, requireRole([ROLES.COOK]), kitchenRouter);
 router.use('/admin', requireAuth, requireRole([ROLES.ADMIN]), adminRouter);
-router.use('/logistics', requireAuth, requireRole([ROLES.LOGISTICS]), logisticsRouter);
+// A penzugyi attekintot (13. szegmens) a vezetoi feluletrol is meg kell tudni
+// nezni, ezert az admin is jogosult ra - a szurok tovabbra is a bejelentkezett
+// felhasznalo etteremere vonatkoznak.
+router.use('/logistics', requireAuth, requireRole([ROLES.LOGISTICS, ROLES.ADMIN]), logisticsRouter);
 
 // TODO: remove - ideiglenes teszt vegpontok a valos ideju reteg ellenorzesehez.
 // Csak fejlesztoi modban elerheto, eles kornyezetben fel sem kerul.

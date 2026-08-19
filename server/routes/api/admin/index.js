@@ -7,6 +7,7 @@ const extrasRouter = require('./extras');
 const tablesRouter = require('./tables');
 const zonesRouter = require('./zones');
 const usersRouter = require('./users');
+const reportsRouter = require('./reports');
 
 const router = express.Router();
 
@@ -31,5 +32,7 @@ router.use('/extras', extrasRouter);
 router.use('/tables', tablesRouter);
 router.use('/zones', zonesRouter);
 router.use('/users', usersRouter);
+// Vezetoi riportok es statisztikak (14. szegmens).
+router.use('/reports', reportsRouter);
 
 module.exports = router;
